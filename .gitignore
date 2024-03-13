@@ -1,0 +1,5 @@
+build/
+kern/version.h
+.vscode/
+.DS_Store
+
