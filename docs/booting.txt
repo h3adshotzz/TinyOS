@@ -1,0 +1,86 @@
+TinyOS Boot Process
+===================
+
+This document outlines the boot requirements and process for loading the TinyOS
+Kernel. The kernel is loaded by tBoot, currently there is no support for other
+bootloaders to load TinyOS. The usage of tinyROM in the boot chain is optional,
+TinyOS can work just with tBoot. 
+
+tinyKern has a debug option, DEFAULTS_KERNEL_NO_BOOTLOADER, which will enable
+the kernel to be loaded in a stripped-down debug state directly, without the
+need for any bootloader. See the description of this tunable below, and read
+more about kernel tunables/defaults in "tunables.txt".
+
+1. Boot Requirements
+
+A number of assumptions are made when the kernel loads, if the kernel enters
+and these are not true, the operation of the kernel could be UNPREDICTABLE.
+
+ - Early System Reset Vector enters at EL2.
+ - Kernel is running within non-secure memory.
+ - The Boot Arguments structure is pointed to by an address in register x0.
+ - If EL3 is present, the following configurations must be set:
+    * SCR_EL3.FIQ = 0
+    * SCR_EL3.IRQ = 0
+ - If using GICv3, the following configurations must be set:
+    * ICC_SRE_EL2.Enable = 1
+    * ICC_SRE_EL2.SRE = 1
+ - If using GICv3, and EL3 is present, the following configurations must be set:
+    * ICC_SRE_EL3.Enable = 1
+    * ICC_SRE_EL3.SRE = 1
+
+
+2. Boot Process
+
+The Boot Process is split into multiple stages: Early System Reset Vector,
+Kernel Reset Vector, Kernel Secondary CPU Entry Vector, Kernel Entry Point (EL1)
+and Kernel C Entry Point.
+
+The Early System Reset Vector is where tBoot (or whatever bootloader is used)
+first enters. Currently, with the RAW binary format, this is the first bytes of
+the kernel image. Interrupts are fully masked, and the boot argument pointer is
+moved from x0 to x27, in order to preserve it. We then jump to the Kernel Reset
+Vector.
+
+The Kernel Reset Vector will configure the VBAR_EL1 exception vector register,
+and prepare the kernel to drop from EL2 to EL1. Additionally, SCTLR_EL1, HCR_EL2,
+SPSR_EL2 and ICC_SRE_EL2 are configured. The address of the Kernel Entry Point
+(EL1) is moved into ELR_EL2, and returns. The exception vector set at this stage
+is only temporary, and just loops to allow a debugger to be attached.
+
+Next is the Kernel Entry Point (EL1). This stage prepares the main Exception
+Vector which contains proper exception handling. The stack pointer is configured,
+and the initial bootstrap pagetables are configured, a 1:1 virtual-to-physical
+mapping, and a Kernel Virtual Address mapping. This covers the entire peripherals
+region, as well as the area where the kernel binary resides. Interrupts are then
+unmasked and we jump to the C entry point.
+
+
+3. Future Plans
+
+The TinyOS Kernel is compiled as an ELF, but converted to a RAW binary which is
+then what is booted. Eventually, the plan is to develop a Tiny-O executable file
+format, as well as an Image container. These plans will be detailed in seperate
+documents.
+
+
+4. Tunables
+
+Name:       DEFAULTS_KERNEL_NO_BOOTLOADER
+Default:    DEFAULTS_DISABLED
+Desc:       When enabled, the Kernel Entry Point in start.S does NOT read the
+            memory size, as well as phsyical and virtual base addresses from
+            the boot arguments, and instead uses hard-coded debug values.
+
+            Additionally, virtual memory is completely disabled, as well as
+            reading properties from the device tree.
+
+            Additional Debug Values:
+            - DEFAULTS_KERNEL_MEMSIZE
+            - DEFAULTS_KERNEL_VIRTBASE
+            - DEFAULTS_BA_OFFSET_PHYSBASE
+
+Name:       DEFAULTS_KERNEL_USE_KVA
+Default:    DEFAULTS_ENABLE
+Desc:       When enabled, the kernel will use the Virtual Address Space, as
+            opposed to the virtual-to-physical identity mapping.

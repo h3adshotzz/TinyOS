@@ -1,0 +1,79 @@
+tinyOS CPU Interface
+====================
+
+This document outlines the CPU interface within the Kernel and it's API. The aim
+of this interface is to provide low-level management of each individual CPU core
+on the system, controlling and tracking the current state of each. This is done
+via the implementation of the `cpu_t` structure, which takes inspiration from
+XNU.
+
+A structure is created for each CPU when it's started. For the Boot cpu, this is
+done immediately within the initial C entry points for both all CPUs. The structure
+will contain the following information regarding the CPU:
+
+ * CPU Information:     CPU number, features, flags and type.
+ * Stacks:              Pointers to the exception and interrupt stacks for that
+                        CPU.
+ * Interrupts:          Current interrupt properties, such as source, ID, etc
+ * State:               CPU_STATE_ACTIVE, CPU_STATE_IDLE, CPU_STATE_SLEEP
+ * Reset:               Reset handler.
+
+It's intended that tBoot will hold secondary CPUs in a `wfe` loop, with the boot
+CPU entering the Kernel at the LowResetVector. The Boot CPU has a seperate setup
+process as it's responsible for initialising many of the subsystems and interfaces
+in the Kernel. The secondary CPUs are eventually enabled, at which point they
+will <TBD: Distinguish boot and secondary cpu at entry>
+
+The CPU provides an API for managing it's current state. The CPU interface can 
+be used directly, but much of the required operations have Machine interface
+wrappers.
+
+
+
+
+TODOs for this Interface
+------------------------
+
+ * CPU data structures need to be updated once interrupts are enabled.
+ * CPU data structures must be updated when handling interrupts
+ * Implement following APIs:
+    * Wake a CPU out of an WFI state
+    * Enable interrupts on a given CPU
+    * ...
+ * Properly define initialisation process for Boot and Secondary CPUs
+    * How are secondary CPUs woken up?
+    * How are the cpu_data_t structs created?
+    * Is this done in Machine or CPU?
+        * Maybe Machine handles creating the data struct, like in kernel_init?
+ * Could also act as the ACPI interface?
+
+ * Interrupts:
+   * need to be enabled on the boot CPU first
+   * then bring up secondary cpus
+   * initialise the cpudata for secondary cpus
+   * setup interrupts on secondary cpus
+
+
+cpus can have three states: active, idle, sleeping
+    - active: currently executing tasks
+    - idle: currently in the idle_task
+    - sleeping: TBD - probably in a WFI loop, needs to be "started" again.
+
+proposed cpu api:
+ * cpu state control:
+    - cpu_idle(cpuid_t)       Set the cpu into an idle state
+    - cpu_sleep(cpuid_t)      Set the cpu into a sleep state (TBD)
+
+ * cpu initialisation:
+    - cpu_init(void)          Initialise cpu - set type, state
+    - cpu_start(cpuid_t)        Start a cpu (wake from WFI loop)
+    - cpu_stop(cpuid_t)         TBD - place into WFI loop/sleep state
+
+    - cpu_data_init(cpu_data_t)     Initialise a cpu_data_t structure
+    - cpu_data_register(cpu_data_t) Register a cpu_data_t structure
+
+ * cpu interrupts:
+    - cpu_interrupts_enable ()  Enable interrupts via DAIF
+    - cpu_interrupts_disable () Disable interrupts via DAIF
+
+    - configuring interrupts is done via Platform (needs device tree).
