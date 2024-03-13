@@ -142,3 +142,5 @@ add_custom_command(TARGET tinyKern POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} -O binary ${CMAKE_BINARY_DIR}/tinyKern
                                         ${CMAKE_BINARY_DIR}/kernel.arm64)
 
+add_custom_command(TARGET tinyKern POST_BUILD
+    COMMAND dtc ${CMAKE_SOURCE_DIR}/dts/tiny-ex1.dtsi -O dtb -o tiny-ex1.dtb)
