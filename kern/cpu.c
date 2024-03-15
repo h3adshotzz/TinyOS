@@ -71,11 +71,11 @@ cpu_init (void)
 
 	cpu_data = CPU_GET_CURRENT ();
 
-	if (cpu_data.cpu_num == BootCpuData.cpu_num)
-		kprintf ("boot cpu\n");
+//	if (cpu_data.cpu_num == BootCpuData.cpu_num)
+//		kprintf ("boot cpu\n");
 
-	cpu_data.cpu_reset_handler = (vm_address_t) vm_kvtop (&_LowResetVector);
-	kprintf ("cpu.cpu_reset_handler: 0x%llx\n", cpu_data.cpu_reset_handler);
+	cpu_data.cpu_reset_handler = (vm_address_t) mmu_translate_kvtop (&_LowResetVector);
+//	kprintf ("cpu.cpu_reset_handler: 0x%llx\n", cpu_data.cpu_reset_handler);
 
 	// TODO: CPU Feature info
 	//
