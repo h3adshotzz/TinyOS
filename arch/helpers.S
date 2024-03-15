@@ -187,3 +187,14 @@ mmu_translate_kvtop:
 L__mmu_translate_kvtop_invalid:
 	mov		x0, #0
 	ret
+
+/*******************************************************************************
+ * Name:	mmu_set_tt_base_alt
+ * Desc:	Assign TTBR1_EL1
+*******************************************************************************/
+	.globl mmu_set_tt_base_alt
+mmu_set_tt_base_alt:
+	dsb		sy
+	msr		TTBR1_EL1, x0
+	isb		sy
+	ret

@@ -34,6 +34,9 @@
 
 #include <arch/proc_reg.h>
 
+/* interface logger */
+#define vm_log(fmt, ...)		interface_log ("vm", fmt, ##__VA_ARGS__)
+
 /*******************************************************************************
  * Virtual Memory (VM) Interface
 *******************************************************************************/

@@ -28,6 +28,8 @@
 #include <kern/startup.h>
 #include <kern/cpu.h>
 
+#include <kern/vm/pmap.h>
+
 KERNEL_GLOBAL_DEFINE(cpu_t)			CpuDataEntries[DEFAULTS_KERNEL_MAX_CPUS];
 
 /* Boot CPU */

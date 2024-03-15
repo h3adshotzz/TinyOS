@@ -99,6 +99,7 @@ target_sources(tinyKern PRIVATE
     # Kernel Core - Virtual Memory Interface
     kern/vm/vm.c
     kern/vm/vm_walk.c
+    kern/vm/pmap.c
 
     # Platform API
     platform/devicetree.c
