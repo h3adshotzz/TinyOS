@@ -30,6 +30,7 @@
 #include <libkern/boot.h>
 
 #include <kern/defaults.h>
+#include <kern/vm/pmap.h>
 #include <kern/vm/vm.h>
 
 #include <arch/proc_reg.h>

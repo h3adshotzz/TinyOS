@@ -63,7 +63,7 @@ PRIVATE_STATIC_DEFINE(vm_address_t) gMemSize;
  * 			TODO: When we load the kernel as an ELF, this is where the sections
  * 			will be mapped.
 */
-void arm_vm_init (struct boot_args *args, address_t membase, vm_size_t memsize)
+void arm_vm_init (struct boot_args *args, vm_address_t membase, vm_size_t memsize)
 {
 	vm_address_t gic_virt_base, uart_virt_base, kern_virt_base;
 

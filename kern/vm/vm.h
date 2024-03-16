@@ -28,82 +28,49 @@
 #define __KERN_VM_H__
 
 #include <tinylibc/stdint.h>
+#include <arch/proc_reg.h>
 
 #include <libkern/assert.h>
 #include <libkern/boot.h>
 
-#include <arch/proc_reg.h>
-
 /* interface logger */
 #define vm_log(fmt, ...)		interface_log ("vm", fmt, ##__VA_ARGS__)
 
-/*******************************************************************************
- * Virtual Memory (VM) Interface
-*******************************************************************************/
+/* Virtual Memory types */
+typedef uint64_t		vm_address_t;		/* Virtual memory address */
+typedef uint64_t		vm_offset_t;		/* Virtual memory offset */
+typedef uint64_t		vm_size_t;			/* Virtual memory size */
 
-/* vm types */
-typedef uint64_t		vm_address_t;	// virt
-typedef uint64_t		address_t;		// phys
+typedef int				vm_map_type_t;		/* Virtual memory region type */
+typedef int				vm_prot_t;			/* Protection properties */
 
-typedef uintptr_t		vm_offset_t;
-typedef uint64_t		vm_addr_t;
-typedef uint64_t		vm_size_t;
+/* Kernel virtual memory area bounds */
+#define VM_KERNEL_MIN_ADDRESS		((vm_address_t) 0xffffffe000000000ULL)
+#define VM_KERNEL_MAX_ADDRESS		((vm_address_t) 0xfffffff3ffffffffULL)
 
-typedef int				vm_return_t;
-typedef int				vm_prot_t;
+/* Protection types */
+#define VM_PROT_NONE				((vm_prot_t) 0x0)
+#define VM_PROT_READ				((vm_prot_t) 0x1)
+#define VM_PROT_WRITE				((vm_prot_t) 0x2)
+#define VM_PROT_EXECUTE				((vm_prot_t) 0x3)
 
-/* vm protection (move to vm_prot.h) */
-#define VM_PROT_NONE		((vm_prot_t) 0x0)
-
-#define VM_PROT_READ		((vm_prot_t) 0x1)
-#define VM_PROT_WRITE		((vm_prot_t) 0x2)
-#define VM_PROT_EXECUTE		((vm_prot_t) 0x3)
-
-/* vm operation return types */
-enum {
-	VM_SUCCESS,
-	VM_FAILURE,
-};
-
-/* vm map types */
-typedef enum {
-	VM_MAP_TYPE_DEVICE = 1,
-	VM_MAP_TYPE_KERNEL,
-	VM_MAP_TYPE_NORMAL,
-} vm_map_type_t;
-
-/* vm map standard names */
-#define VM_MAP_NAME_CPU_PERIPHERALS		"vm_map_cpu_peripherals"
-#define VM_MAP_NAME_UART				"vm_map_uart"
-#define VM_MAP_NAME_MMIO				"vm_map_mmio"
-#define VM_MAP_NAME_KERNEL				"vm_map_kernel"
-
+/* Mapping types */
+#define VM_MAP_TYPE_INVALID			((vm_map_type_t) 0x0)
+#define VM_MAP_TYPE_KERNEL			((vm_map_type_t) 0x1)
+#define VM_MAP_TYPE_DEVICE			((vm_map_type_t) 0x2)
+#define VM_MAP_TYPE_USER			((vm_map_type_t) 0x3)
 
 /**
+ * Virtual Memory Map structure
  * 
+ * ...
 */
-typedef struct {
-	const char		*name;
-	vm_addr_t		virt_base;
-	vm_addr_t		phys_base;
-	vm_size_t		size;
-	vm_map_type_t	type;
+typedef struct vm_map {
+
 } vm_map_t;
 
 
-/*******************************************************************************
- * Translation Table Entry (TTE) Interface
-*******************************************************************************/
-
-typedef uint64_t		tt_page_t;
-typedef uint64_t		tt_entry_t;
-typedef uint64_t		tt_table_t;
-
-typedef struct
-{
-
-
-} translation_table_t;
-
+/* Virtual memory system initialisation */
+extern void arm_vm_init (struct boot_args *args, vm_address_t membase, vm_size_t memsize);
 
 #endif /* __kern_vm_h__ */
