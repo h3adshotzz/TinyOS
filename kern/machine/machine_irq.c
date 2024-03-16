@@ -32,7 +32,7 @@
 #include <libkern/assert.h>
 
 /** NOTE: These are test values until reading them from the device tree works */
-#define QEMU_GIC_PERIPH_BASE		0x8000000 //0xfffffff000000000
+#define QEMU_GIC_PERIPH_BASE		0xfffffff000000000
 
 #define DEBUG_TEST_GICD_BASE		(QEMU_GIC_PERIPH_BASE + 0x000000)
 #define DEBUG_TEST_GICR_BASE		(QEMU_GIC_PERIPH_BASE + 0x0A0000)
