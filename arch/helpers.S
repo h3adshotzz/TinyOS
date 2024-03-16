@@ -198,3 +198,14 @@ mmu_set_tt_base_alt:
 	msr		TTBR1_EL1, x0
 	isb		sy
 	ret
+
+/*******************************************************************************
+ * Name:	mmu_set_tt_base
+ * Desc:	Assign TTBR0_EL1
+*******************************************************************************/
+	.globl mmu_set_tt_base
+mmu_set_tt_base:
+	dsb		sy
+	msr		TTBR0_EL1, x0
+	isb		sy
+	ret
