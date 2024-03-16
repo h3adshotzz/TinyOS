@@ -42,6 +42,7 @@ static pmap_t pmap_list[PMAP_LIST_MAX] __attribute__((section(".data")));
  * The pagetable region can only be initialised once.
 */
 static int ptregion_initialised = 0;
+static pmap_addr_t ptregion_phys_base;
 
 /**
  * The pagetables_region is declared in data.S, and is a 16-page region carveout
@@ -78,9 +79,9 @@ static vm_address_t pmap_ptregion_alloc ()
 
 /**
  * Name:	pmap_ptregion_create
- * Desc:	Initialise the pagetables region and allocate a single page for the
- * 			kernel translation tables. The pagetables region is a 16-page region
- * 			used for storing the kernel translation tables.
+ * Desc:	Create a new translation table within the pagetables region. The
+ * 			pagetables region is 16-pages in size, and is used for storing kernel
+ * 			tables, and the invalid tables.
 */
 pmap_return_t pmap_ptregion_create ()
 {
@@ -94,13 +95,10 @@ pmap_return_t pmap_ptregion_create ()
 
 	/* set the initial pagetable region cursor */
 	pagetables_region_cursor = &pagetables_region_base;
-
-	/* allocate the first page */
-	kernel_tte = (tt_page_t *) pmap_ptregion_alloc ();
-	kernel_ttep = mmu_translate_kvtop (kernel_tte);
+	ptregion_phys_base = mmu_translate_kvtop (&pagetables_region_base);
 
 	pmap_log ("initialised pagetables region: 0x%llx - 0x%llx\n", 
-		kernel_ttep, kernel_ttep + DEFAULTS_KENREL_VM_PAGE_SIZE*16);
+		ptregion_phys_base, ptregion_phys_base + DEFAULTS_KENREL_VM_PAGE_SIZE*16);
 
 	ptregion_initialised = 1;
 	return PMAP_RETURN_SUCCESS;
