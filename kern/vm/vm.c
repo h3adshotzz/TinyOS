@@ -83,6 +83,16 @@ void arm_vm_init (struct boot_args *args, address_t membase, vm_size_t memsize)
 	/* initialise the pagetables region */
 	pmap_ptregion_create ();
 
+	/* create the kernel pagestables */
+	kernel_tte = (tt_table_t *) pmap_ptregion_alloc ();
+	kernel_ttep = mmu_translate_kvtop (kernel_tte);
+
+	/* create the invlaid pagetables region */
+	invalid_tte = (tt_table_t *) pmap_ptregion_alloc ();
+	invalid_ttep = mmu_translate_kvtop (invalid_tte);
+
+	/* Notify the MMU of the new translation table base for TTBR0 */
+
 	/**
 	 * tBoot should prepare the base of DRAM to first contain the kernel binary,
 	 * then the device tree, and then the boot arguments structure. Here, we
@@ -101,8 +111,9 @@ void arm_vm_init (struct boot_args *args, address_t membase, vm_size_t memsize)
 	/* Walk the pagetables to ensure things are in-order */
 	vm_pagetable_walk (kernel_tte, 1);
 
-	/* Notify the MMU of the new translation table base */
-	mmu_set_tt_base_alt (kernel_ttep);
+	/* Notify the MMU of the new translation table base for TTBR1 */
+	mmu_set_tt_base_alt (kernel_ttep & TTBR_BADDR_MASK);
+	mmu_set_tt_base (invalid_ttep & TTBR_BADDR_MASK);
 
 	vm_log ("initial virtual memory subsystem setup complete\n");
 }
