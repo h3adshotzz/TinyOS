@@ -60,6 +60,10 @@ KERNEL_GLOBAL_DEFINE(vm_address_t)	pagetables_region_cursor;
 KERNEL_GLOBAL_DEFINE(tt_table_t)	*kernel_tte __attribute__((section(".data")));
 KERNEL_GLOBAL_DEFINE(pmap_addr_t)	kernel_ttep __attribute__((section(".data")));
 
+/* Pointer to the invalid translation table entry */
+KERNEL_GLOBAL_DEFINE(tt_table_t)	*invalid_tte __attribute__((section(".data")));
+KERNEL_GLOBAL_DEFINE(pmap_addr_t)	invalid_ttep __attribute__((section(".data")));
+
 
 /**
  * Allocates a new 4KB page within the pagetable region in the kernel, from the

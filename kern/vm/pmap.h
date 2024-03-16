@@ -102,6 +102,9 @@ extern pmap_addr_t	pagetables_region_cursor;
 extern tt_table_t	*kernel_tte;				/* Core Kernel pagetables */
 extern pmap_addr_t	kernel_ttep;				/* Physical address of kernel_tte */
 
+extern tt_table_t	*invalid_tte;				/* Blank, invalid pagetable */
+extern pmap_addr_t	invalid_ttep;
+
 /* pagetable region management */
 extern pmap_return_t pmap_ptregion_create ();
 extern vm_address_t pmap_ptregion_alloc ();
