@@ -104,6 +104,7 @@ extern pmap_addr_t	kernel_ttep;				/* Physical address of kernel_tte */
 
 /* pagetable region management */
 extern pmap_return_t pmap_ptregion_create ();
+extern vm_address_t pmap_ptregion_alloc ();
 
 /* translation table management */
 extern pmap_return_t pmap_create_tte (tt_table_t *, pmap_addr_t, vm_address_t, vm_size_t);

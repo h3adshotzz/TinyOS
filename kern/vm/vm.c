@@ -80,7 +80,7 @@ void arm_vm_init (struct boot_args *args, address_t membase, vm_size_t memsize)
 	vm_log ("arm_vm_init: [0x%llx - 0x%llx : 0x%llx - 0x%llx]\n",
 		gVirtBase, gVirtBase + gMemSize, gPhysBase, gPhysBase + gMemSize);
 
-	/* create the pagetables region, so we can start mapping peripherals */
+	/* initialise the pagetables region */
 	pmap_ptregion_create ();
 
 	/**

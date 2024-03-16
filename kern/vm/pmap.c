@@ -65,7 +65,7 @@ KERNEL_GLOBAL_DEFINE(pmap_addr_t)	kernel_ttep __attribute__((section(".data")));
  * Allocates a new 4KB page within the pagetable region in the kernel, from the
  * address of pagetables_region_cursor.
 */
-static vm_address_t pmap_ptregion_alloc ()
+vm_address_t pmap_ptregion_alloc ()
 {
 	vm_address_t vaddr;
 	
