@@ -104,9 +104,9 @@ void arm_vm_init (struct boot_args *args, address_t membase, vm_size_t memsize)
 	kern_virt_base = (args->virtbase + (args->kernbase - args->physbase));
 
 	/** TODO: tBoot needs to send the GIC region, as we're just guessing atm */
-	pmap_create_tte (kernel_tte, args->uartbase - 0x1000000, gic_virt_base, 0x1000000);
-	pmap_create_tte (kernel_tte, args->uartbase, uart_virt_base, args->uartsize);
-	pmap_create_tte (kernel_tte, args->kernbase, kern_virt_base, args->kernsize);
+	pmap_tt_create_tte (kernel_tte, args->uartbase - 0x1000000, gic_virt_base, 0x1000000);
+	pmap_tt_create_tte (kernel_tte, args->uartbase, uart_virt_base, args->uartsize);
+	pmap_tt_create_tte (kernel_tte, args->kernbase, kern_virt_base, args->kernsize);
 
 	/* Walk the pagetables to ensure things are in-order */
 	vm_pagetable_walk (kernel_tte, 1);

@@ -109,10 +109,11 @@ pmap_return_t pmap_ptregion_create ()
 }
 
 /**
- * Name:	pmap_create_tte
- * Desc:	
+ * Name:	pmap_tt_create_tte
+ * Desc:	Create a physical translation table entry in the given translation
+ * 			table. 
 */
-pmap_return_t pmap_create_tte (tt_table_t *table, pmap_addr_t pbase,
+pmap_return_t pmap_tt_create_tte (tt_table_t *table, pmap_addr_t pbase,
 							vm_address_t vbase, vm_size_t size)
 {
 	vm_address_t map_address, map_address_l2, vend;
