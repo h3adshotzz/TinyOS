@@ -91,7 +91,7 @@ void vm_pagetable_walk_ttbr1 ()
 {
 	vm_address_t base;
 
-	base = arm64_read_ttbr1_el1 ();
+	base = (mmu_get_tt_base_alt () & TTBR_BADDR_MASK);
 	_vm_pagetable_walk ((tt_table_t *) base, 1, 0);
 }
 
@@ -103,7 +103,7 @@ void vm_pagetable_walk_ttrb0 ()
 {
 	vm_address_t base;
 
-	base = arm64_read_ttbr0_el1 ();
+	base = (mmu_get_tt_base () & TTBR_BADDR_MASK);
 	_vm_pagetable_walk ((tt_table_t *) base, 1, 0);
 }
 

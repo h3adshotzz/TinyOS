@@ -63,13 +63,13 @@ typedef uint64_t		pmap_addr_t;		/* Physical memory address */
  * we'll refer to them as 'tt_base' and 'tt_base_alt', where 'tt_base' is TTBR0,
  * and 'tt_base_alt' is TTBR1,
 */
-extern void mmu_set_tcr (uint64_t);					/* not-implemented */
-extern void mmu_set_tt_base (pmap_addr_t);			/* not-implemented */
+extern void mmu_set_tcr (uint64_t);
+extern void mmu_set_tt_base (pmap_addr_t);
 extern void mmu_set_tt_base_alt (pmap_addr_t);
 
-extern uint64_t mmu_get_tcr ();						/* not-implemented */
-extern pmap_addr_t mmu_get_tt_base ();				/* not-implemented */
-extern pmap_addr_t mmu_get_tt_base_alt ();			/* not-implemented */
+extern uint64_t mmu_get_tcr ();
+extern pmap_addr_t mmu_get_tt_base ();
+extern pmap_addr_t mmu_get_tt_base_alt ();
 
 /* Use the MMU to translate virtual addresses */
 extern pmap_addr_t mmu_translate_kvtop ();

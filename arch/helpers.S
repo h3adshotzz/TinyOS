@@ -38,56 +38,6 @@ arm64_read_cpuid:
 	ret
 
 /*******************************************************************************
- * Name:	arm64_read_ttbr0_el1
- * Desc:	Read TTBR0_EL1 System Register, and unmask it to return the TTBR0
- *          base address.
-*******************************************************************************/
-	.globl arm64_read_ttbr0_el1
-arm64_read_ttbr0_el1:
-	mrs		x0, TTBR0_EL1
-	and		x0, x0, #(TTBR_BADDR_MASK)
-	ret
-
-/*******************************************************************************
- * Name:	arm64_read_ttbr1_el1
- * Desc:	Read TTBR1_EL1 System Register, and unmask it to return the TTBR1
- *          base address.
-*******************************************************************************/
-	.globl arm64_read_ttbr1_el1
-arm64_read_ttbr1_el1:
-	mrs		x0, TTBR1_EL1
-	and		x0, x0, #(TTBR_BADDR_MASK)
-	ret
-
-/*******************************************************************************
- * Name:	arm64_write_ttbr0_el1
- * Desc:	Read TTBR0_EL1 System Register, and unmask it to return the TTBR0
- *          base address.
-*******************************************************************************/
-	.globl arm64_write_ttbr0_el1
-arm64_write_ttbr0_el1:
-	and		x0, x0, #(TTBR_BADDR_MASK)
-	msr		TTBR0_EL1, x0
-	tlbi	vmalle1
-	dsb		ish
-	isb
-	ret
-
-/*******************************************************************************
- * Name:	arm64_write_ttbr1_el1
- * Desc:	Read TTBR1_EL1 System Register, and unmask it to return the TTBR1
- *          base address.
-*******************************************************************************/
-	.globl arm64_write_ttbr1_el1
-arm64_write_ttbr1_el1:
-	and		x0, x0, #(TTBR_BADDR_MASK)
-	msr		TTBR1_EL1, x0
-	tlbi	vmalle1
-	dsb		ish
-	isb
-	ret
-
-/*******************************************************************************
  * Name:	arm64_read_affinity
  * Desc:	Read the affinity value from MPIDR_EL1
 *******************************************************************************/
@@ -168,44 +118,4 @@ arm64_icc_igrpen1_el1_write:
 	.globl arm64_icc_igrpen1_el1_read
 arm64_icc_igrpen1_el1_read:
 	mrs		x0, ICC_IGRPEN1_EL1
-	ret
-
-/*******************************************************************************
- * Name:	mmu_translate_kvtop
- * Desc:	Translate a given Kernel Virtual Address to Physical Address using
- *			the AT instruction.
-*******************************************************************************/
-	.globl mmu_translate_kvtop
-mmu_translate_kvtop:
-	at		s1e1r, x0
-	isb		sy
-	mrs		x1, PAR_EL1
-	tbnz	x1, #0, L__mmu_translate_kvtop_invalid
-	bfm		x1, x0, #0, #11
-	and		x0, x1, 0x0000ffffffffffff
-	ret
-L__mmu_translate_kvtop_invalid:
-	mov		x0, #0
-	ret
-
-/*******************************************************************************
- * Name:	mmu_set_tt_base_alt
- * Desc:	Assign TTBR1_EL1
-*******************************************************************************/
-	.globl mmu_set_tt_base_alt
-mmu_set_tt_base_alt:
-	dsb		sy
-	msr		TTBR1_EL1, x0
-	isb		sy
-	ret
-
-/*******************************************************************************
- * Name:	mmu_set_tt_base
- * Desc:	Assign TTBR0_EL1
-*******************************************************************************/
-	.globl mmu_set_tt_base
-mmu_set_tt_base:
-	dsb		sy
-	msr		TTBR0_EL1, x0
-	isb		sy
 	ret

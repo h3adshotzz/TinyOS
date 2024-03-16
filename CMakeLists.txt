@@ -84,6 +84,7 @@ target_sources(tinyKern PRIVATE
     arch/exception.S
     arch/exception.c
     arch/timer.S
+    arch/mmu.S
 
     # Kernel Core
     kern/cpu.c
