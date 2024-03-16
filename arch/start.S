@@ -192,10 +192,6 @@ _start:
 	adr		x0, intstack_top
 	mov		sp, x0
 
-	/* set the proper exception handler */
-	adr		x0, _ExceptionVectorBase
-	msr		VBAR_EL1, x0
-
 	/* callback to tinyBoot */
 	smc		#0
 
@@ -262,6 +258,12 @@ _start:
 	orr		x0, x0, #1
 	msr		SCTLR_EL1, x0
 	isb
+
+	/* set the proper exception vector */
+	adr		x0, _ExceptionVectorBase
+	sub		x0, x0, x26			// Convert to a KVA
+	add		x0, x0, x25
+	msr		VBAR_EL1, x0
 
 	/* Unmask interrupts */
 	msr		DAIFClr, #(DEFAULTS_KERNEL_DAIF)
