@@ -79,3 +79,39 @@ are passed to the reset vector. As tBoot is more platform-specific, it is more
 appropriate for it to determine the system physical base address.
 
 <detail calcualtion of virtual address base>
+
+
+Virtual Memory
+--------------
+
+Initial plans:
+
+- how to manage physical memory
+- how to manage virtual memory (attributes, mapping types)
+- how are tasks/processes mapping into memory?
+    - how do we map the code of a process into a particular part of memory?
+    - how does this work in userspace
+    - how does the task access tinylibc, console, drivers, etc
+- memory allocation
+    - kalloc, malloc, mmap, memcpy, etc
+
+- mark startup functions in a seperate section so they can be unmapped
+- core kernel code mapped together
+- tasks can be copied out to their own virtual memory space, and ensure they are
+  not mapped twice.
+
+------------------------
+
+- arm_vm_init
+    - configure the pagetables region, via pmap_ptregion_create
+    - configure the kernel pmap, via pmap_bootstrap
+    - create three virtual memory mappings:
+        - GIC region:   0x8000000 -> 0x8100000
+        - UART region:  0x9000000 -> 0x9001000
+
+
+- create a 2mb region at the base of physical memory to use for the pagetables
+- pagetables_region_base, _end, and _cursor are used to track through it
+- the pagetables region can be managed by pmap. 
+
+pmap_ptregion_X
