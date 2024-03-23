@@ -41,6 +41,7 @@
 
 /* libkern */
 #include <libkern/assert.h>
+#include <libkern/queue.h>
 #include <libkern/boot.h>
 
 /* platform */
@@ -161,6 +162,26 @@ kernel_init (struct boot_args *args,
 
 	// TODO: cpu_smp_init() - bring up secondary cpus
 	// PSCI??
+
+	kprintf ("sctlr_el1: 0x%llx\n", arm64_read_sctlr_el1 ());
+
+
+	struct test_type {
+		int id;
+		queue_t *head;
+	};
+
+	struct test_type t1 = { .id = 1 };
+	struct test_type t2 = { .id = 2 };
+	struct test_type t3 = { .id = 3 };
+	struct test_type t4 = { .id = 4 };
+
+	kprintf ("1: %d, 2: %d, 3: %d, 4: %d\n",
+		t1.id, t2.id, t3.id, t4.id);
+
+	queue_t *queue;
+	enqueue_head (queue, (queue_t *) t1.head);
+
 
 	kprintf ("--KERNEL_SETUP_COMPLETE--\n");
 

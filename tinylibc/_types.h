@@ -57,4 +57,13 @@ typedef unsigned long                 __uintptr_t;
 /* boolean */
 typedef int                             __boolean;
 
+/**
+ * Name:    offset_of
+*/
+#if defined(__GNUC__)
+#define __offsetof(type, field)     __builtin_offsetof(type, field)
+#else
+#define __offsetof(type, field)     ((size_t)(&((type *)0)->field))
+#endif /* __gnuc__ */
+
 #endif /* __tlibc_priv_types_h__ */
