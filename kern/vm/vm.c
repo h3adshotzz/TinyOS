@@ -115,5 +115,11 @@ void arm_vm_init (struct boot_args *args, vm_address_t membase, vm_size_t memsiz
 	mmu_set_tt_base_alt (kernel_ttep & TTBR_BADDR_MASK);
 	mmu_set_tt_base (invalid_ttep & TTBR_BADDR_MASK);
 
+	/* The kernel is now running on the new pagetables, no longer using identity
+		mapping */
+
+	/* Create the kernel pmap */
+	pmap_kernel_create (kern_virt_base);
+
 	vm_log ("initial virtual memory subsystem setup complete\n");
 }

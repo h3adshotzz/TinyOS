@@ -33,16 +33,11 @@
 #include <libkern/assert.h>
 #include <libkern/boot.h>
 
+#include <kern/vm/vm_types.h>
+#include <kern/vm/pmap.h>
+
 /* interface logger */
 #define vm_log(fmt, ...)		interface_log ("vm", fmt, ##__VA_ARGS__)
-
-/* Virtual Memory types */
-typedef uint64_t		vm_address_t;		/* Virtual memory address */
-typedef uint64_t		vm_offset_t;		/* Virtual memory offset */
-typedef uint64_t		vm_size_t;			/* Virtual memory size */
-
-typedef int				vm_map_type_t;		/* Virtual memory region type */
-typedef int				vm_prot_t;			/* Protection properties */
 
 /* Kernel virtual memory area bounds */
 #define VM_KERNEL_MIN_ADDRESS		((vm_address_t) 0xffffffe000000000ULL)
@@ -67,8 +62,18 @@ typedef int				vm_prot_t;			/* Protection properties */
 */
 typedef struct vm_map {
 
+	vm_offset_t		base;		/* Offset from the pmap's minimum virtual address */
+	vm_size_t		size;		/* Mapping size */
+
+	//pmap_t			*pmap;		/* Physical map associated with this vm_map */
+
+	/* todo */
+
 } vm_map_t;
 
+
+/* vm api */
+extern int vm_map_create (vm_offset_t, vm_size_t);
 
 /* Virtual memory system initialisation */
 extern void arm_vm_init (struct boot_args *args, vm_address_t membase, vm_size_t memsize);

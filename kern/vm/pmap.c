@@ -38,6 +38,10 @@
 */
 static pmap_t pmap_list[PMAP_LIST_MAX] __attribute__((section(".data")));
 
+/* Kernel pmap */
+static struct pmap kernel_pmap_ref __attribute__((section(".data")));
+static pmap_t *kernel_pmap = &kernel_pmap_ref;
+
 /**
  * The pagetable region can only be initialised once.
 */
@@ -155,4 +159,49 @@ pmap_return_t pmap_tt_create_tte (tt_table_t *table, pmap_addr_t pbase,
 
 	pmap_log ("mapped 0x%llx -> 0x%llx to phys 0x%llx\n", vbase, vend, pbase);
 	return PMAP_RETURN_SUCCESS;
+}
+
+/**
+ * Name:	pmap_create
+ * Desc:	Create a pmap_t structure.
+*/
+pmap_t pmap_create (vm_size_t size)
+{
+	/**
+	 * This will be used to create a new pmap for a userspace process. Some
+	 * things relating to how this works still need to be figured out.
+	*/
+}
+
+/**
+ * 
+*/
+pmap_t pmap_kernel_create (vm_address_t vbase, pmap_addr_t pbase)
+{
+	vm_address_t vmax;
+	vm_size_t size;
+
+	/**
+	 * Notes:
+	 * 
+	 * 	- creates a pmap for the kernel virtual address space region
+	 *  - kernel should use vbase -> VM_MAX_ADDRESS as it's address space
+	 *  - translation tables are kernel_tte
+	*/
+
+	/* Assign the translation table pointers, and min/max virtual memory region */
+	kernel_pmap->tte = kernel_tte;
+	kernel_pmap->ttep = kernel_ttep;
+	kernel_pmap->min = vbase;
+	kernel_pmap->max = VM_KERNEL_MAX_ADDRESS;
+
+	/* Physical base address */
+	kernel_pmap->phys = pbase;
+
+	/* The kernel uses an ASID of 0 */
+	kernel_pmap->asid = 0;
+
+	/* more todo */
+
+	pmap_log ("created kernel pmap\n");
 }

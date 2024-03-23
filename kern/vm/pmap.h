@@ -26,9 +26,7 @@
  * 			with the MMU and it's system registers.
  * 
  * 			The virtual memory interface is built on-top of pmap. When a vm_map_t
- * 			is created, it's created on a pmap_t. There are, for now, two pmap_t
- * 			that are created - one for the kernel and another for userspace.
- * 
+ * 			is created, it's created on a pmap_t. 
  * 			...
 */
 
@@ -36,6 +34,8 @@
 #define __KERN_VM_PMAP_H__
 
 #include <tinylibc/stdint.h>
+
+#include <kern/vm/vm_types.h>
 #include <kern/vm/vm.h>
 
 /* interface logger */
@@ -80,15 +80,23 @@ extern pmap_addr_t mmu_translate_kvtop ();
  * The pmap_t structure represents the state of a physical memory region that
  * can be configured to one of the Translation Table Base Register (TTBRn_EL1).
  *
- * Virtual memory allocations (vm_map_t) are each linked to a particular pmap_t.
+ * Virtual memory maps (vm_map_t) are each linked to a particular pmap_t. When
+ * switching between tasks the pmap structure is used to properly reconfigure
+ * the MMU with the correct TTBRn_EL1, and TCR_EL1 values.
  *
 */
 typedef struct pmap {
 	tt_page_t		*tte;		/* Root translation table entry */
 	pmap_addr_t		ttep;		/* Translation table physical address */
-	pmap_addr_t		base;		/* Physical memory region base address */
-	vm_size_t		size;		/* physical memory region size */
 
+	pmap_addr_t		phys;		/* Physical base address of the region */
+
+	vm_address_t	min;		/* Smallest virtual address for this region */
+	vm_address_t	max;		/* Largest virtual address for this region */
+
+	uint8_t			asid;		/* Address Space Identifier */
+
+	/* more to add */
 } pmap_t;
 
 /* Maximum number of physical maps */
@@ -111,5 +119,9 @@ extern vm_address_t pmap_ptregion_alloc ();
 
 /* translation table management */
 extern pmap_return_t pmap_tt_create_tte (tt_table_t *, pmap_addr_t, vm_address_t, vm_size_t);
+
+/* pmap */
+extern pmap_t pmap_create (vm_address_t vbase);
+extern pmap_t pmap_create (vm_size_t size);
 
 #endif /* __kern_vm_pmap_h__ */

@@ -119,3 +119,10 @@ arm64_icc_igrpen1_el1_write:
 arm64_icc_igrpen1_el1_read:
 	mrs		x0, ICC_IGRPEN1_EL1
 	ret
+
+
+
+	.globl arm64_read_sctlr_el1
+arm64_read_sctlr_el1:
+	mrs		x0, SCTLR_EL1
+	ret
