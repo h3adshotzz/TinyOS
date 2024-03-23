@@ -1,0 +1,69 @@
+TinyOS Memory Management
+========================
+
+NOTE: THIS IS NOT FINAL, THIS IS JUST SOME NOTES AS I DECIDE ON HOW MEMORY
+MANAGEMENT WILL WORK IN THE KERNEL.
+
+This document outlines the design of the memory management system in TinyOS, and
+the various structures and concepts. The memory management system is made up of
+a number of layers. We have the physical memory itself, then virtual memory which
+is made up of two regions, low and high virtual memory, then we have pmaps,
+vm_maps, and additional structures on-top of that.
+
+
+Visualisation:
+
++---------+---------+---------+---------+
+| vm_page | vm_page | vm_page | vm_page |
++---------+---------+---------+---------+
+|      vm_map       |      vm_map       |
++-------------------+-------------------+
+|                 pmap                  |
++---------------------------------------+
+
++------------+--------------+---------------------------+
+| map0, map1 |  map0, map1  |    map0,  map1,  map2     |
++------------+--------------+---------------------------+
+|   pmap     |    pmap      |           pmap            |
++---------------------------+---------------------------+
+|   Virtual Memory (Low)    |   Virtual Memory (High)   |
++---------------------------+---------------------------+
+|                   Physical Memory                     | 
++-------------------------------------------------------+
+
+
+Structures:
+ * pmap_t       A structure to describe a translation table. This includes a
+                pointer to the translation table, along with attributes and the
+                minimum and maximum virtual address for that region. When the
+                kernel context switches, the pmap_t is used to restore the MMU
+                to the correct configuration. Each process will have a single
+                pmap_t.
+
+                pmap_create (vm_address_t min, vm_address_t max)
+
+
+ * vm_map_t     A structure to describe a virtual memory mapping. Each vm_map_t
+                belongs to a single pmap_t. The map must be within the bounds of
+                the parent pmap_t, but can have different attributes.
+
+                vm_map_create (pmap_t pmap, vm_address_t base, vm_size_t size)
+
+
+ * vm_page_t    A structure to describe individual 4KB pages of physical memory
+                that have been allocated. We don't really want physical memory
+                mapped twice - this might need more thinking. There needs to be
+                a layer closer to physical memory so we can managed whats actually
+                allocated.
+ 
+ 
+Process:
+ - We want to keep the kernel mapped in the high virtual memory region. It will
+   be covered by the pmap_t in the kernel_task.
+ - When a new userspace task is created, a new pmap_t is created for it, and new
+   vm_map_t's are made to map the binary and to map out space for a stack and
+   heap. 
+ - On a context-switch, the translation table specified in the pmap_t will be
+   restored to TTBRn_EL1. This should allow for switching between tasks, both in
+   userspace and kernelspace. [NOTE: look into how the exception vectors need
+   to be mapped].
