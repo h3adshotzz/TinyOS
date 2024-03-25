@@ -65,6 +65,12 @@ __vm_page_create (phys_addr_t paddr)
 	/* get the location in the .vm section to create the page structure */
 	page = vm_page_queue_region_cursor;
 
+	/**
+	 * an issue exists where without this print, the compiler does not generate
+	 * the instructions at the top and bottom of this function for the stack. It
+	 * also doesn't generate the 'ret' for the bottom either. There are a few of
+	 * these issues throughout TinyOS.
+	*/
 	kprintf("");
 
 	/* create the page structure */
