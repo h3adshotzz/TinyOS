@@ -108,6 +108,7 @@ target_sources(tinyKern PRIVATE
 
     # Kernel Library
     libkern/panic.c
+    libkern/queue.c
 
     # Drivers
     drivers/pl011/pl011.c
