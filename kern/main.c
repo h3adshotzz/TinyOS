@@ -166,6 +166,9 @@ kernel_init (struct boot_args *args,
 	kprintf ("sctlr_el1: 0x%llx\n", arm64_read_sctlr_el1 ());
 	__queue_test_1 ();
 
+	/* todo: move this to just after arm_vm_init */
+	vm_configure ();
+
 
 	kprintf ("--KERNEL_SETUP_COMPLETE--\n");
 

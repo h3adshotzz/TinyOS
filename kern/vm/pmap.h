@@ -56,6 +56,9 @@ typedef uint64_t		tt_page_t;			/* Translation table page */
 typedef uint64_t		tt_entry_t;			/* Translation table page entry */
 
 typedef uint64_t		pmap_addr_t;		/* Physical memory address */
+typedef uint64_t		phys_addr_t;
+
+typedef uint64_t		phys_size_t;
 
 /**
  * MMU helpers. These are external declarations of assembly functions. As there

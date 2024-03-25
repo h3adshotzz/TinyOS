@@ -31,6 +31,7 @@
 
 #include <kern/defaults.h>
 #include <kern/kdebug.h>
+#include <kern/vm/vm_page.h>
 #include <kern/vm/pmap.h>
 #include <kern/vm/vm.h>
 
@@ -53,6 +54,15 @@ PRIVATE_STATIC_DEFINE(vm_address_t) gVirtBase;
 PRIVATE_STATIC_DEFINE(vm_address_t) gPhysBase;
 PRIVATE_STATIC_DEFINE(vm_address_t) gMemSize;
 
+/**
+ * Nmae:	vm_configure
+ * Desc:	Configure the virtual memory subsystem - this is only done once on
+ * 			the boot cpu.
+*/
+void vm_configure (void)
+{
+	vm_page_bootstrap (gPhysBase, gMemSize);
+}
 
 /**
  * Name:	arm_vm_init

@@ -25,6 +25,15 @@ SECTIONS
         *(COMMON)
         __bss_end = .;
     }
+
+    .vm(NOLOAD) : {
+        . = ALIGN(16);
+        __vm_start = .;
+        *(.vm .vm.*)
+        *(COMMON)
+        __vm_end = .;
+    }
+
     _end = .;
 
     /DISCARD/ : { *(.comment) *(.gnu*) *(.note*) *(.eh_frame*) }
