@@ -43,26 +43,34 @@
 /* Page size */
 #define VM_PAGE_SIZE				DEFAULTS_KENREL_VM_PAGE_SIZE
 
+/* Page structure size */
+#define VM_PAGE_STRUCT_SIZE			sizeof (vm_page_t)
+
 /**
  * Page flags.
 */
 
 
 
+typedef struct vm_page vm_page_t;
+
 /**
- * The vm_page structure describes each physical page in the system, using the
- * memory attributes read from the device tree, covering all memory that is
- * addressable to the kernel and available to vm_map.
+ * 
 */
-typedef struct vm_page {
-	queue_entry_t		pageq;
+struct vm_page {
 
-	phys_addr_t			paddr;		/* Physical address of the page */
+	/* Physical address of the page */
+	phys_addr_t		paddr;
 
-	uint64_t			idx;		/* Page index within the pageq */
-	uint64_t			flags;		/* Page flags */
+	/* Next and previous page */
+	vm_page_t		*next;
+	vm_page_t		*prev;
 
-} vm_page_t;
+	/* Page index and flags */
+	uint64_t		idx;
+	uint64_t		flags;
+
+};
 
 
 /* vm page configuration */
