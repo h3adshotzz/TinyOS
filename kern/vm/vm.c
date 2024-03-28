@@ -54,6 +54,10 @@ PRIVATE_STATIC_DEFINE(vm_address_t) gVirtBase;
 PRIVATE_STATIC_DEFINE(vm_address_t) gPhysBase;
 PRIVATE_STATIC_DEFINE(vm_address_t) gMemSize;
 
+/* Physical kernel memory properties */
+static phys_addr_t kernel_phys_base;
+static phys_addr_t kernel_phys_size;
+
 /**
  * Nmae:	vm_configure
  * Desc:	Configure the virtual memory subsystem - this is only done once on
@@ -61,7 +65,12 @@ PRIVATE_STATIC_DEFINE(vm_address_t) gMemSize;
 */
 void vm_configure (void)
 {
-	vm_page_bootstrap (gPhysBase, gMemSize);
+	/**
+	 * NOTE: 	we only pass non-secure memory to the vm_page bootstrap - we don't
+	 * 			create pages for device memory. The kernel is loaded at the base
+	 * 			of non-secure memory.
+	*/
+	vm_page_bootstrap (kernel_phys_base, gMemSize, kernel_phys_size);
 }
 
 /**
@@ -130,6 +139,10 @@ void arm_vm_init (struct boot_args *args, vm_address_t membase, vm_size_t memsiz
 
 	/* Create the kernel pmap */
 	pmap_kernel_create (kern_virt_base);
+
+	/* kernel physical bounds */
+	kernel_phys_base = membase;
+	kernel_phys_size = args->kernsize;
 
 	vm_log ("initial virtual memory subsystem setup complete\n");
 }

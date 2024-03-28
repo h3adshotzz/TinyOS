@@ -98,7 +98,7 @@ __vm_page_create (phys_addr_t paddr)
 
 	/* create the new page */
 	page->paddr = paddr;
-	page->flags = 0;
+	page->flags = (VM_PAGE_FLAG_FREE | VM_PAGE_FLAG_ALLOC_USER);
 	page->idx = vm_page_idx;
 
 	/* set next and previous elements */
@@ -130,12 +130,12 @@ __vm_page_create (phys_addr_t paddr)
  * 			for already in-use memory. 
 */
 void
-vm_page_bootstrap (phys_addr_t start, phys_addr_t end)
+vm_page_bootstrap (phys_addr_t mem_base, phys_size_t mem_size, phys_size_t kern_size)
 {
 	phys_addr_t	pcursor;
 	vm_size_t	psize;
-	uint64_t	page_count, i;
-	vm_page_t	*first_page;
+	uint64_t	page_count, kern_page_count, i;
+	vm_page_t	*first_page, *kern_page;
 
 	vm_page_log ("starting vm_page_bootstrap\n");
 
@@ -143,7 +143,7 @@ vm_page_bootstrap (phys_addr_t start, phys_addr_t end)
 	vm_page_idx = 0;
 
 	/* calculate the actual physical memory size, and total number of pages */
-	psize = (vm_size_t) end - start;
+	psize = (vm_size_t) mem_size;
 	page_count = psize / VM_PAGE_SIZE;
 	
 	vm_page_region_size = page_count * sizeof (vm_page_t);
@@ -166,8 +166,8 @@ vm_page_bootstrap (phys_addr_t start, phys_addr_t end)
 	 * linked list.
 	*/
 	first_page = (vm_page_t *) vm_page_region_cursor;
-	first_page->paddr = start;
-	first_page->flags = 0;
+	first_page->paddr = mem_base;
+	first_page->flags = (VM_PAGE_FLAG_FREE | VM_PAGE_FLAG_ALLOC_USER);
 	first_page->idx = 0;
 
 	/* configure the doubly-linked list */
@@ -178,13 +178,13 @@ vm_page_bootstrap (phys_addr_t start, phys_addr_t end)
 	__vm_page_region_inc ();
 
 	/* create a page struct for every physical page, covering (start -> end) */
-	pcursor = start + VM_PAGE_SIZE;
+	pcursor = mem_base + VM_PAGE_SIZE;
 	for (i = vm_page_idx; i < page_count; i++) {
 		if (__vm_page_create (pcursor) != 0)
 			break;
 		pcursor += VM_PAGE_SIZE;
 	}
-	vm_page_log ("created %d pages\n", i);
+	vm_page_log ("created %d pages (0x%llx-0x%llx\n", i, mem_base, mem_size);
 
 	/* verify that all pages were created */
 	if (i != page_count) {
@@ -193,8 +193,22 @@ vm_page_bootstrap (phys_addr_t start, phys_addr_t end)
 		return;
 	}
 
-	/* TODO: set in-use pages as allocated. Need to work out what memory is
-		already in-use. */
+	/**
+	 * we need to mark the kernel pages as VM_PAGE_FLAG_ALLOC_KERNEL. Cycle again
+	 * through each page from kernel start -> kernel end
+	*/
+	pcursor = mem_base;
+	kern_page_count = (kern_size + vm_page_region_size) / VM_PAGE_SIZE;
+	for (i = 0; i < kern_page_count; i++) {
+		kern_page = __vm_page_region_get_idx (i);
+		kern_page->flags = (VM_PAGE_FLAG_ALLOC | VM_PAGE_FLAG_ALLOC_KERNEL);
+
+		pcursor += VM_PAGE_SIZE;
+
+		/* again, this werid issues. if this isn't here, this code fails */
+		kprintf ("");
+	}
+	vm_page_log ("marked %d pages as VM_PAGE_FLAG_ALLOC_KERNEL\n", i);
 
 
 	/* testing: check that first->prev = last, and last->next = first */
@@ -207,10 +221,10 @@ vm_page_bootstrap (phys_addr_t start, phys_addr_t end)
 
 
 //	vm_page_t *page, *first;
-//	page = first = VM_PAGE_REGION_FIRST();
+//	page = first = __vm_page_region_first();
 //	
 //	do {
-//		vm_page_log ("page[%d]: 0x%llx\n", page->idx, page->paddr);
+//		vm_page_log ("page[%d]: 0x%llx: %d\n", page->idx, page->paddr, page->flags);
 //		page = page->next;
 //	} while (page->next != first);
 //	vm_page_log ("page: 0x%llx, next: 0x%llx, first: 0x%llx\n", page, page->next, first);

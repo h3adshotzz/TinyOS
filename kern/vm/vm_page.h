@@ -47,8 +47,22 @@
 #define VM_PAGE_STRUCT_SIZE			sizeof (vm_page_t)
 
 /**
+ * Page Flags
+ * 
+ * Bit[0]			Page State: Allocated = 0, Free = 1
+ * Bit[1:2]			Alloc Type:	Device = 0b01, Kernel = 0b10, User = 0b11
+*/
+
+
+/**
  * Page flags.
 */
+#define VM_PAGE_FLAG_ALLOC			(1 << 0)
+#define VM_PAGE_FLAG_FREE			(0 << 0)
+
+#define VM_PAGE_FLAG_ALLOC_DEVICE	(1 << 1)
+#define VM_PAGE_FLAG_ALLOC_KERNEL	(2 << 1)
+#define VM_PAGE_FLAG_ALLOC_USER		(3 << 1)
 
 
 
@@ -74,7 +88,7 @@ struct vm_page {
 
 
 /* vm page configuration */
-void vm_page_bootstrap (phys_addr_t start, phys_addr_t end);
+void vm_page_bootstrap (phys_addr_t mem_base, phys_size_t mem_size, phys_size_t kern_size);
 
 
 #endif /* __kern_vm_page_h__ */
