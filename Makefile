@@ -33,7 +33,6 @@ BUILD_TYPE	:=		Debug
 # Build Directory
 BUILD_DIR	:=		build/
 
-
 ################################################################################
 # Toolchain
 ################################################################################
@@ -67,9 +66,9 @@ KERNEL_LINKERSCRIPT		:=	arch/linker.ld
 KERNEL_MAPFILE			:=	kernel.map
 KERNEL_ENTRYPOINT		:=	kernel_init
 
-LDFLAGS			+=	-Map=${KERNEL_MAPFILE}				\
-					--script ${KERNEL_LINKERSCRIPT} 	\
-					--entry=${KERNEL_ENTRYPOINT}
+LDFLAGS					+=	-Map=${KERNEL_MAPFILE}				\
+							--script ${KERNEL_LINKERSCRIPT} 	\
+							--entry=${KERNEL_ENTRYPOINT}
 
 ################################################################################
 # Build target
