@@ -19,46 +19,43 @@
 //
 //===----------------------------------------------------------------------===//
 
+ENTRY(_start)
 SECTIONS
 {
-	. = 0x0;
+    . = 0x0;
 
 	.text : {
-		__text_start = .;
-		*(.text, .text.*)
-		__text_end = .;
+		KEEP(*(.text.boot))
+	    *(.text .text.* .gnu.linkonce.t*)
 	}
 
 	.rodata : {
-		__rodata_start = .;
-		*(.rodata, .rodata.*)
-		__rodata_end = .;
+	    KEEP(*(.rodata.defaults))
+	    *(.rodata .rodata.* .gnu.linkonce.r*)
 	}
 
 	PROVIDE(_data = .);
 	.data : {
-		__data_start = .;
-		*(.data, .data.*)
-		__data_end = .;
+	    *(.data .data.* .gnu.linkonce.d*)
 	}
 
 	.bss(NOLOAD) : {
-		. = ALIGN(16);
-		__bss_start = .;
-		*(.bss, .bss.*)
-		*(COMMON)
-		__bss_end = .;
+	    . = ALIGN(16);
+	    __bss_start = .;
+	    *(.bss .bss.*)
+	    *(COMMON)
+	    __bss_end = .;
 	}
 
 	.vm(NOLOAD) : {
-		. = ALIGN(16);
-		__vm_start = .;
-		*(.vm, .vm.*)
-		*(COMMON)
-		__vm_end = .;
-	}
+	   . = ALIGN(16);
+	    __vm_start = .;
+	    *(.vm .vm.*)
+	    *(COMMON)
+	    __vm_end = .;
+	 }
 
-	__end = .;
+	 _end = .;
 
 	/DISCARD/ : { *(.comment) *(.gnu*) *(.note*) *(.eh_frame*) *(.igot*) *(.iplt*) *(.rela*) }
 }

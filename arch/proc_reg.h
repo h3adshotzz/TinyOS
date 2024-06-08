@@ -43,6 +43,8 @@
 #ifndef __KERN_PROC_REG_H__
 #define __KERN_PROC_REG_H__
 
+#include <libkern/compiler.h>
+
 /** TODO: HCR_EL2, SPSR_EL2 */
 
 /*******************************************************************************
@@ -98,6 +100,8 @@
 #define DAIF_MASK_FIQ_SHIFT				(6)
 #define DAIF_MASK_FIQ					(1ULL << DAIF_MASK_FIQ_SHIFT)
 
+/* Mask to set/clear all bits */
+#define DAIF_MASK_ALL					UL(0xf)
 
 /*******************************************************************************
  * Name:	SCTLR_EL1, System Control Register (EL1)

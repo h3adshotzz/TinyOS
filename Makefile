@@ -33,6 +33,9 @@ BUILD_TYPE	:=		Debug
 # Build Directory
 BUILD_DIR	:=		build/
 
+# Includes
+INCLUDES	:=		-I.
+
 ################################################################################
 # Toolchain
 ################################################################################
@@ -48,7 +51,7 @@ ASFLAGS		:=	-nodefaultlibs -nostartfiles -nostdlib -ffreestanding	\
 				${DEFINES} ${INCLUDES}
 
 CFLAGS		:=	-nostdinc -ffreestanding -mgeneral-regs-only -mstrict-align \
-				-c -Os \
+				-c -O0 \
 				${DEFINES} ${INCLUDES}
 
 LDFLAGS		:=	-O1
@@ -60,6 +63,11 @@ LDFLAGS		:=	-O1
 # Source makefiles
 include arch/arch.mk
 include kern/kern.mk
+include libkern/libkern.mk
+include tinylibc/libc.mk
+include platform/platform.mk
+include drivers/drivers.mk
+include libfdt/libfdt.mk
 
 # Kernel build config
 KERNEL_LINKERSCRIPT		:=	arch/linker.ld
@@ -79,14 +87,24 @@ all:	msg_start kernel
 msg_start:
 	@echo "Building tinyOS Kernel"
 
-clean:
+msg_clean:
 	@echo "  CLEAN"
-	$(Q)rm -rf *.map
-	$(Q)rm -rf *.elf
-	$(Q)rm -rf *.bin
+
+clean_obj:
 	$(Q)rm -rf *.o
 	$(Q)rm -rf arch/*.o
+	$(Q)rm -rf arch/*.ld
 	$(Q)rm -rf kern/*.o
+	$(Q)rm -rf tinylibc/*.o
+	$(Q)rm -rf tinylibc/string/*.o
+
+clean_out:
+	$(Q)rm -rf *.map
+	$(Q)rm -rf *.dump
+	$(Q)rm -rf *.elf
+	$(Q)rm -rf *.bin
+
+clean: msg_clean clean_obj clean_out
 
 %.o:	%.S
 	@echo "  AS      $<"
@@ -100,7 +118,7 @@ clean:
 	@echo "  LDS     $<"
 	$(Q)$(AS) $(ASFLAGS) -P -E $< -o $@
 
-kernel:	kernel_conf kernel_elf
+kernel:	kernel_conf kernel_elf clean_obj
 kernel_conf:
 	@echo "  CONF    $<"
 

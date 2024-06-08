@@ -19,4 +19,8 @@
 #
 #===-----------------------------------------------------------------------===//
 
-KERNEL_SOURCES	+=	arch/start.o
+KERNEL_SOURCES	+=	arch/start.o		\
+					arch/data.o			\
+					arch/mmu.o			\
+					arch/handler.o		\
+					arch/helpers.o

@@ -1,0 +1,26 @@
+
+- Define a coding style to use, so things stay consistent
+- Define a commenting style to use
+	- header files should contain a brief description of what they're doing
+	- inline comments should use /* */, and be all lower-case.
+	- long and complicated functions should have descriptions.
+
+- Rewrite list:
+	- Device tree / Platforms
+		- the device tree code doesn't need rewriting
+		- change the type case to match the rest of the codebase.
+	- machine
+		- better define what this is for
+		- 
+
+
+- platform
+	- Primarily acts a device tree wrapper
+- machine
+	- machine topology
+	- interrupts
+	- timers
+- virtual memory
+	- vm setup
+	- vm_page
+	- vm_map

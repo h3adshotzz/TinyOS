@@ -26,7 +26,11 @@
  */
 
 #include <arch/proc_reg.h>
+#include <kern/defaults.h>
 
+#include <libkern/image.h>
+
+#include "arch/macros.S"
 
 /******************************************************************************
  * Early System Reset Vector
@@ -42,23 +46,29 @@
  *****************************************************************************/
 
 	.align		12
-	.section	".boot"
-#if defined(DEFAULTS_KERNEL_IMAGEINFO_HEADER)
+	.section	".text"		// tmp
+#if DEFAULTS_KERNEL_IMAGEINFO_HEADER
 	.globl		_header
 _header:
-	
+
+	.word	IMAGE_INFO_MAGIC
+	.word	KRNL_IMAGE_ID
+	.quad	0x20
+	.quad	0x1802000
+	.quad	0x0
+
 #endif
 	.globl		_LowResetVector
 _LowResetVector:
 
 	/* disable interrupts */
-	msr		DAIFSet, #(0xf)
+	msr		DAIFSet, #(DAIF_MASK_ALL)
 
 	/* preserve boot args */
 	mov		x27, x0
 
 	/* jump */
-	b		_reset_vector
+	b		_ResetVector
 
 /******************************************************************************
  * Early Exception Vectors
@@ -122,8 +132,8 @@ _LowExceptionVectorBase:
 	.globl		_ResetVector
 _ResetVector:
 
-	/* setup low reset vector before attempting anything */
-	adr		x0, _LowResetVectorBase
+	/* setup low exception vector before attempting anything */
+	adr		x0, _LowExceptionVectorBase
 	msr		VBAR_EL1, x0
 
 	/* initialise SCTLR_EL1 */
@@ -228,7 +238,7 @@ _start:
 	/* set Translation Table Base Registers for EL1 */
 	adr		x0, bootstrap_pagetables
 	and		x0, x0, #(TTBR_BADDR_MASK)
-	and		x1, x1, #(TTBR_BAADR_MASK)
+	and		x1, x1, #(TTBR_BADDR_MASK)
 	msr		TTBR0_EL1, x0
 	msr		TTBR1_EL1, x1
 	tlbi	vmalle1
@@ -255,14 +265,32 @@ _start:
 	msr		SCTLR_EL1, x0
 	isb
 
+	// tmp
+	ldr		x5, =0x1000000
+
 	/* set the proper exception vector */
 	adr		x0, _ExceptionVectorBase
-	sub		x0, x0, x26					// Convert to a KVA
-	add		x0, x0, x25
+	sub		x0, x0, x26			// offset = _ExceptionVectorBase - phys base
+	add		x0, x0, x25			// vbar = offset + virt base
+	//sub		x0, x0, x5			// vbar - 0x1000000
 	msr		VBAR_EL1, x0
 
 	/* unmask interrupts */
-	msr		DAIFClr, #(DEFAULTS_KERNEL_DAIF)
+	msr		DAIFClr, #(DAIF_MASK_ALL)
+
+	// debugging
+	//
+	//	x25 = virtbase
+	//	x26 = physbase
+	//	0x41003118
+	//	0x41000000
+	//
+	
+	mov		x2, x0
+	//adr		x2, _ExceptionVectorBase
+	//sub		x2, x2, x26
+	//add		x2, x2, x25
+	//sub		x2, x2, x5
 
 	/* calculate the KVA for kernel_init */
 	mov		x0, x27
