@@ -124,6 +124,8 @@ void kernel_init (struct boot_args *boot_args, uint64_t x1, uint64_t x2)
 	/* configure remaining virtual memory subsystems */
 	vm_configure ();
 
+	kprintf("minimal kernel startup complete\n");
+
 	//__asm__ volatile ("brk #1");
 	__asm__ volatile ("b .");
 }

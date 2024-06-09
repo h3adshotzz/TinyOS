@@ -265,32 +265,14 @@ _start:
 	msr		SCTLR_EL1, x0
 	isb
 
-	// tmp
-	ldr		x5, =0x1000000
-
 	/* set the proper exception vector */
 	adr		x0, _ExceptionVectorBase
 	sub		x0, x0, x26			// offset = _ExceptionVectorBase - phys base
 	add		x0, x0, x25			// vbar = offset + virt base
-	//sub		x0, x0, x5			// vbar - 0x1000000
 	msr		VBAR_EL1, x0
 
 	/* unmask interrupts */
 	msr		DAIFClr, #(DAIF_MASK_ALL)
-
-	// debugging
-	//
-	//	x25 = virtbase
-	//	x26 = physbase
-	//	0x41003118
-	//	0x41000000
-	//
-	
-	mov		x2, x0
-	//adr		x2, _ExceptionVectorBase
-	//sub		x2, x2, x26
-	//add		x2, x2, x25
-	//sub		x2, x2, x5
 
 	/* calculate the KVA for kernel_init */
 	mov		x0, x27

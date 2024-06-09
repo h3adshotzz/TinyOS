@@ -19,43 +19,44 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <kern/defaults.h>
+
 ENTRY(_start)
 SECTIONS
 {
-    . = 0x0;
+	. = DEFAULTS_KERNEL_VM_VIRT_BASE;
 
 	.text : {
-		KEEP(*(.text.boot))
-	    *(.text .text.* .gnu.linkonce.t*)
+		*(.text .text.* .gnu.linkonce.t*)
 	}
 
 	.rodata : {
-	    KEEP(*(.rodata.defaults))
-	    *(.rodata .rodata.* .gnu.linkonce.r*)
+		KEEP(*(.rodata.defaults))
+		*(.rodata .rodata.* .gnu.linkonce.r*)
 	}
 
 	PROVIDE(_data = .);
 	.data : {
-	    *(.data .data.* .gnu.linkonce.d*)
+		*(.data .data.* .gnu.linkonce.d*)
 	}
 
 	.bss(NOLOAD) : {
-	    . = ALIGN(16);
-	    __bss_start = .;
-	    *(.bss .bss.*)
-	    *(COMMON)
-	    __bss_end = .;
+		. = ALIGN(16);
+		__bss_start = .;
+		*(.bss .bss.*)
+		*(COMMON)
+		__bss_end = .;
 	}
 
 	.vm(NOLOAD) : {
-	   . = ALIGN(16);
-	    __vm_start = .;
-	    *(.vm .vm.*)
-	    *(COMMON)
-	    __vm_end = .;
+		. = ALIGN(16);
+		__vm_start = .;
+		*(.vm .vm.*)
+		*(COMMON)
+		__vm_end = .;
 	 }
 
-	 _end = .;
+	_end = .;
 
 	/DISCARD/ : { *(.comment) *(.gnu*) *(.note*) *(.eh_frame*) *(.igot*) *(.iplt*) *(.rela*) }
 }

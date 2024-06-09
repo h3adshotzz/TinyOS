@@ -1,0 +1,99 @@
+tinyOS Kernel Memory Management
+===============================
+
+DRAFT v0.1
+
+Introduction
+------------
+
+The purpose of this document is to give an overview of both the configuration of
+architecture components like the MMU and the OS-level virtual memory subsystem
+built on-top. We'll start out by covering the configuration of the MMU, and then
+look at the four layers the kenrel has built on-top:
+ * bootstrap mappings
+ * physical memory maps
+ * vm pages
+ * vm maps
+
+MMU Configuration
+-----------------
+
+The VMSAv8-A specification details the AArch64 memory model. There are numerous
+ways to configure this based on the type of system the Operating System is meant
+to run on. In our case, we don't need large amounts of physical or virtual 
+address space, as tinyOS is likely to only run on virtualised hardware for non-
+practical purposes.
+
+With that in mind, the MMU is configured as follows:
+
+ * We use a 4KB granule size. There's not much benefit in going to 16KB as the
+   base test configuration for tinyOS, tiny-ex1, has 512MB of memory. Meaning
+   we would have 128,000 granules.
+ * We use a 36-bit physical address size. The next-smallest option is 30-bit's
+   which would only allow for 4GB of memory, for 40-bit's, which provides 1TB.
+   Using 36-bit's allows us up-to 64GB.
+ * We use a 39-bit virtual address size. The virtual address size is slightly
+   larger than the physical address, so we can map peripherals.
+
+Regarding the virtual address size, this is used to determine the level at which
+translation tables are accessed. Each translation table level can address the
+following amount of memory:
+
+ * L0 table: 512GB per entry
+ * L1 table: Table covers 512GB, 1GB per Entry
+ * L2 table: Table covers 1GB, 2MB per Entry
+ * L3 table: Table covers 2MB, 4KB per Entry
+
+In the case of 39-bit addresses, 39-bit's can cover 512GB, therefore there is no
+need to have L0 tables, so the MMU starts translations at L1. The virtual address
+size is determined by setting the TnSZ bit of TCR_EL1, where the number of bits
+is calculated as (64 - TnSZ). For 39-bit's, the TnSZ value is set to 0x19.
+
+
+Bootstrap Mappings
+------------------
+
+The Bootstrap Mappings are the term used to describe the two initial memory maps
+created when the kernel first boots. There are two mappings created: V=P and KVA.
+
+The V=P, or 1:1 physical mapping, directly maps physical addresses to virtual
+addresses. This means that memory accesses with physical addresses are possible,
+and is important because when the kernel first enters we don't have virtual
+memory configured yet.
+
+The KVA, or Kernel Virtual Address mapping, maps the physical base of the kernel
+to the virtual base address defined in `kern/defaults.h`. This is temporary and
+is replaced once the virtual memory system is configured, and just allows us to
+jump to kernel C code using full kernel virtual addresses.
+
+For the bootstrap mappings only two levels of translation are used. Level 1 is
+mandatory, as we're using 39-bit virtual addresses, but because Level 1 can
+address 1GB in a single entry, there is only one entry into this table. Level 2
+can address 2MB with each entry, but even this is more than the size of the
+kernel on it's own, so at most two entries are created in the L2 table.
+
+Instead of using a third table, the bootstrap phase creates Block Entries rather
+than a table desciptor pointing to a Level 3 table full of 4KB Page Entries. The
+bootstrap tables are only used for a short time until the kernel can call 
+vm_configure, so it's not worth creating three levels of tables.
+
+Additionally, the bootstrap tables have no attributes or permissions, and the 
+peripherals region is not mapped yet, so there is no UART available until after
+arm_vm_init(). Eventually, the call arm_vm_init() will clear these tables from
+memory, so physical addressing is no longer possible.
+
+
+Physical Maps
+-------------
+
+- pmap struct
+-
+
+
+
+VM Pages
+--------
+
+
+VM Maps
+-------

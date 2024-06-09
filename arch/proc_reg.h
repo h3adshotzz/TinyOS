@@ -519,9 +519,13 @@
 #define TCR_T1SZ_SHIFT					(16)
 #define TCR_T0SZ_SHIFT					(0)
 
-#define TINYOS_TSZ						39
-#define TCR_T1SZ_MASK					((64-TINYOS_TSZ) << TCR_T1SZ_SHIFT)
-#define TCR_T0SZ_MASK					((64-TINYOS_TSZ) << TCR_T0SZ_SHIFT)
+/**
+ * The virtual address size is determined as (64 - TnSZ). Therefore, 64-0x19
+ * means 39-bit virtual addresses, so translationt tables will start at Level 1.
+*/
+#define TINYOS_TSZ						0x19
+#define TCR_T1SZ_MASK					((TINYOS_TSZ) << TCR_T1SZ_SHIFT)
+#define TCR_T0SZ_MASK					((TINYOS_TSZ) << TCR_T0SZ_SHIFT)
 
 
 /*******************************************************************************
