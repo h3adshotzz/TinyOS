@@ -1,0 +1,53 @@
+TinyOS Hobby Kernel
+===================
+
+TinyOS Hobby Kernel "tinyKern", a hobby, AArch64 kernel. tinyKern is intended
+to be loaded by the tinyBoot bootloader, which is currently closed-source but
+compiled binaries are published under the Releases tab of this repository.
+
+Please note, this is entirely a hobby project and not intended for any realworld
+practical use. This project is also not affiliated with my employer, it's my own
+personal hobby project.
+
+This README outlines some initial design ideas/goals for tinyKern, with more
+detailed documentation located under the docs/ directory. The following are
+some general design ideas for tinyKern:
+
+ * Much is inspired by XNU, with some influence from Linux too, both in the
+   kernel design and source code flow.
+ * UNIX-like, Hybrid kernel.
+ * Absoloutely NO predefined platform information. Whereas tinyBoot heavily
+   relies on a platform description and platform-specific code, this kernel
+   must be loadable on various platform configurations, as long as a device
+   tree is present.
+ * Will rely on Flattened Device Tree, maybe ACPI too in the future.
+ * Must be loaded by tinyBoot, as described in docs/booting.txt.
+ * Some kind of minimal Libc implementation.
+ * Please, come up with a better name other than "tinyKern".
+
+Some further design ideas that will have dedicated design docs are a Tiny-O
+executable file format, instead of using ELF, as well as a TinyImage wrapper
+for encrypted and compressed kernel images.
+
+
+** Drivers **
+
+The way kernel drivers will work is not yet determined. I'm currently leaning
+towards the way U-Boot handles drivers. More on this will be documented as
+I come up with ideas. Some drivers such as Graphics, Filesystem, Networking
+etc will be implemented as seperate drivers - not as part of the Kernel
+source.
+
+
+** Source Tree **
+
+The general source code layout will probably look something like this:
+
+ * arch/        AArch64-specific assembly, C, etc.
+ * kern/        Kernel Core.
+ * machine/     Machine API.
+ * platform/    Platform API (TBD, see docs/booting.txt)
+ * ipc/         Inter-process communication.
+ * vm/          Virtual Memory Subsystem.
+ * lib/         Library (libfdt, libc, etc)
+
