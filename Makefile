@@ -95,8 +95,15 @@ clean_obj:
 	$(Q)rm -rf arch/*.o
 	$(Q)rm -rf arch/*.ld
 	$(Q)rm -rf kern/*.o
+	$(Q)rm -rf kern/vm/*.o
+	$(Q)rm -rf kern/machine/*.o
+	$(Q)rm -rf platform/*.o
 	$(Q)rm -rf tinylibc/*.o
 	$(Q)rm -rf tinylibc/string/*.o
+	$(Q)rm -rf libkern/*.o
+	$(Q)rm -rf libfdt/*.o
+	$(Q)rm -rf drivers/irq/*.o
+	$(Q)rm -rf drivers/pl011/*.o
 
 clean_out:
 	$(Q)rm -rf *.map

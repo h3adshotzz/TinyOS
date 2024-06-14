@@ -7,6 +7,6 @@
 #define KERNEL_BUILD_VERSION            "0.0.2"
 #define KERNEL_BUILD_TARGET             "AARCH64_QEMU"
 #define KERNEL_BUILD_STYLE              "DEBUG"
-#define KERNEL_SOURCE_VERSION           "tinykern-0130.28.55.2"
+#define KERNEL_SOURCE_VERSION           "tinykern-0190.32.441.2"
 
 #endif /* __kernel_conf_h__ */

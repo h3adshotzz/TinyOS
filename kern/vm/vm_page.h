@@ -47,6 +47,9 @@
 
 /**
  * Virtual Memory Physical Page
+ * 
+ * Information on how the vm_page functions can be found in
+ * docs/memory-management.txt
 */
 typedef struct vm_page				vm_page_t;
 struct vm_page {
@@ -79,10 +82,11 @@ struct vm_page {
 };
 
 /* initialise pages */
-extern void vm_page_bootstrap (phys_addr_t membase, 
-			phys_size_t memsize, phys_size_t kernsize);
+extern void vm_page_bootstrap (phys_addr_t membase, phys_size_t memsize,
+							phys_size_t kernsize);
 
 extern phys_addr_t vm_page_alloc ();
+extern void vm_page_free ();
 
 
 #endif /* __kern_vm_page_h__ */

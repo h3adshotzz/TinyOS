@@ -38,6 +38,7 @@
 
 /* kernel */
 #include <kern/machine.h>
+#include <kern/machine/machine-irq.h>
 #include <kern/vm/vm.h>
 #include <kern/vm/pmap.h>
 
@@ -116,15 +117,21 @@ void kernel_init (struct boot_args *boot_args, uint64_t x1, uint64_t x2)
 
 	// debugging
 	kprintf ("DEBUG x0: 0x%lx, x1: 0x%lx, x2: 0x%lx\n", x0, x1, x2);
-	//kprintf_hexdump ((void *) x0, 0x0, 0x50);
-	//kprintf_hexdump ((void *) x1, 0x0, 0x50);
-
-	vm_debug_overview ();
 
 	/* configure remaining virtual memory subsystems */
 	vm_configure ();
 
+	/* configure the interrupt controller */
+	machine_init_interrupts ();
+
 	kprintf("minimal kernel startup complete\n");
+
+	//machine_register_interrupt (4, 0);
+	//machine_send_interrupt (4, 1);
+	//machine_send_interrupt (4, 1);
+	//machine_send_interrupt (4, 1);
+
+	kprintf("kernel_init complete\n");
 
 	//__asm__ volatile ("brk #1");
 	__asm__ volatile ("b .");

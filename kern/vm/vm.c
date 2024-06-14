@@ -72,29 +72,8 @@ static void __vm_debug_dump_map (vm_map_t *map)
 	kprintf ("\n");
 }
 
-
-/*******************************************************************************
- * Name:	vm_configure
- * Desc:
- ******************************************************************************/
-
-void vm_configure (void)
+static void __vm_tests ()
 {
-	/**
-	 * Create the vm_page's for the entire non-secure memory region. We do not
-	 * create pages for device memory. The kernel is placed at the lowest usable
-	 * physical memory address.
-	*/
-	vm_page_bootstrap (kernel_phys_base, memory_phys_size, kernel_phys_size);
-
-	/**
-	 * Create the kernel tasks vm_map just after the pmap structure. This is all
-	 * (hopefully) within a single 4KB page.
-	*/
-	kernel_vm_map = (vm_map_t *) (&kernel_pmap_ref + sizeof(pmap_t));
-	vm_map_create(kernel_vm_map, &kernel_pmap, kernel_virt_base, VM_KERNEL_MIN_ADDRESS);
-	vm_map_entry_create(kernel_vm_map, kernel_virt_base, kernel_phys_size);
-
 	vm_address_t test_address = 0xfffffff001802008;
 	const char *test_data = "test_data_";
 
@@ -135,6 +114,29 @@ void vm_configure (void)
 //	kprintf ("test_data @ 0x%lx: %s\n", test_address, (const char *) test_address);
 //
 //	__vm_debug_dump_map(kernel_vm_map);
+}
+
+/*******************************************************************************
+ * Name:	vm_configure
+ * Desc:
+ ******************************************************************************/
+
+void vm_configure (void)
+{
+	/**
+	 * Create the vm_page's for the entire non-secure memory region. We do not
+	 * create pages for device memory. The kernel is placed at the lowest usable
+	 * physical memory address.
+	*/
+	vm_page_bootstrap (kernel_phys_base, memory_phys_size, kernel_phys_size);
+
+	/**
+	 * Create the kernel tasks vm_map just after the pmap structure. This is all
+	 * (hopefully) within a single 4KB page.
+	*/
+	kernel_vm_map = (vm_map_t *) (&kernel_pmap_ref + sizeof(pmap_t));
+	vm_map_create(kernel_vm_map, &kernel_pmap, kernel_virt_base, VM_KERNEL_MIN_ADDRESS);
+	vm_map_entry_create(kernel_vm_map, kernel_virt_base, kernel_phys_size);
 
 }
 

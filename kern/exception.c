@@ -30,12 +30,12 @@
 
 #include <kern/defaults.h>
 #include <kern/kprintf.h>
-#include <kern/version.h>
 #include <kern/vm/vm.h>
 #include <arch/arch.h>
 #include <kern/cpu.h>
 
 #include <libkern/panic.h>
+#include <libkern/version.h>
 
 /* kernel handler annotations */
 #define __KERNEL_FAULT_HANDLER

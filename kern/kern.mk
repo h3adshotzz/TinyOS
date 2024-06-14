@@ -28,4 +28,5 @@ KERNEL_SOURCES	+=	kern/main.o			\
 					kern/vm/vm_walk.o	\
 					kern/vm/vm_page.o	\
 					kern/vm/vm_map.o	\
-					kern/vm/pmap.o
+					kern/vm/pmap.o		\
+					kern/machine/machine-irq.o

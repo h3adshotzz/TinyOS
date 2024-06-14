@@ -22,6 +22,10 @@
 # PL011
 PL011_DRV_SOURCES	:=	drivers/pl011/pl011.o
 
+# IRQ
+GICV3_DRV_SOURCES	:=	drivers/irq/irq-gicv3.o
+
 
 # Driver sources
-KERNEL_SOURCES		+=	${PL011_DRV_SOURCES}
+KERNEL_SOURCES		+=	${PL011_DRV_SOURCES}	\
+						${GICV3_DRV_SOURCES}
