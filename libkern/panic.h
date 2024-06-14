@@ -20,14 +20,20 @@
 //===----------------------------------------------------------------------===//
 
 /**
- * 	Name:	panic.h
- * 	Desc:	Kernel panic handler.
-*/
+ *	Name:	panic.h
+ *	Desc:	Kernel panic handler.
+ */
 
 #ifndef __LIBKERN_PANIC_H__
 #define __LIBKERN_PANIC_H__
 
-void panic (const char *fmt, ...);
-void panic_print (const char *func, const char *fmt, ...);
+/**
+ * 	TODO: This should be a much more extensive debugger interface, not just a
+ *	header for declaring panic()
+ */
 
-#endif /* __LIBKERN_PANIC_H__ */
+void panic (const char *fmt, ...);
+void panic_with_func (const char *func, const char *fmt, ...);
+
+
+#endif /* __libkern_panic_h__ */

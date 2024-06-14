@@ -1,0 +1,59 @@
+Current TODO list
+=================
+
+Engineering:
+- Better define the role of the machine and platform interfaces
+	- what are they each used for?
+	- what are their APIs?
+	- Platform:
+		* primarily acts as a device tree wrapper?
+	- Machine:
+		* machine topology, interrupts, timers
+- Start implementing tasking
+	- initially start with constructing the kernel task, and tracking the active
+	  task for a particular CPU
+	- spawning additional tasks, run in kernel virtual memory to start with
+	- schedular
+	- only the kernel_task should run in kernel memory (0xffffffff00000000+)
+	- what sort of system tasks do we need to start with?
+	- how are these tasks split from the kernel source code?
+		* look at how XNU does this
+- Virtual memory
+	- continue adding features to virtual memory
+	- look at add permissions and attributes for memory mappings
+	- ensure the kernel is not tied to a particular physical memory location,
+	  so we could do something like KASLR
+- Other stuff
+	- non-kernel tasks need a way to do things like printing to the console,
+	  so look at system calls
+
+
+Misc:
+- Define a coding style to use, so things stay consistent
+- Define a commenting style to use
+	- header files should contain a brief description of what they're doing
+	- inline comments should use /* */, and be all lower-case.
+	- long and complicated functions should have descriptions.
+
+
+
+
+- Rewrite list:
+	- Device tree / Platforms
+		- the device tree code doesn't need rewriting
+		- change the type case to match the rest of the codebase.
+	- machine
+		- better define what this is for
+		- 
+
+
+- platform
+	- Primarily acts a device tree wrapper
+- machine
+	- machine topology
+	- interrupts
+	- timers
+- virtual memory
+	- vm setup
+	- vm_page
+	- vm_map

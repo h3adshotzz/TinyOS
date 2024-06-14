@@ -20,159 +20,129 @@
 //===----------------------------------------------------------------------===//
 
 /**
- * 	Name:	main.c
- * 	Desc:	Kernel startup/bootstrap code. Initial entry point from Assembly
- * 			bootstrap.
-*/
+ * Name:	main.c
+ * Desc:	Kernel startup code. Initial entry point from assembly, execution
+ * 			continues here until virtual memory and tasking is setup, and then
+ * 			we jump to the kernel_task.
+ */
 
 /* tinylibc */
 #include <tinylibc/stdint.h>
 #include <tinylibc/byteswap.h>
 
-/* kernel */
-#include <kern/defaults.h>
-#include <kern/kprintf.h>
-#include <kern/version.h>
-#include <kern/kdebug.h>
-#include <kern/cpu.h>
-
-/* machine */
-#include <kern/machine/machine_irq.h>
-
 /* libkern */
-#include <libkern/assert.h>
 #include <libkern/boot.h>
+#include <libkern/assert.h>
+#include <libkern/version.h>
+#include <libkern/panic.h>
+
+/* kernel */
+#include <kern/machine.h>
+#include <kern/machine/machine-irq.h>
+#include <kern/vm/vm.h>
+#include <kern/vm/pmap.h>
 
 /* platform */
 #include <platform/devicetree.h>
+#include <platform/platform.h>
 
-/* arch */
-#include <arch/proc_reg.h>
-
-/* stacks */
-extern vm_offset_t intstack_top;
-extern vm_offset_t excepstack_top;
-
-static void print_boot_banner ();
 
 /**
- * Name:	kernel_init
- * Desc:	Initial Kernel entry point in C code. At this point, we are still on
- * 			bootstrap pagetables, tasking and other kernel functionality is not
- * 			yet enabled, and secondary CPUs are still in an "sleep state".
+ * Interrupt and Exception stack pointers
+ */
+extern vm_address_t intstack_top;
+extern vm_address_t excepstack_top;
+
+/* statics */
+void print_boot_banner ();
+
+/**
+ * The kernel will enter here from start.S and will complete the necessary setup
+ * until the kernel_task can be launched, at which point the .startup section
+ * will be erased from memory and unampped.
 */
-void
-kernel_init (struct boot_args *args,
-			 uintptr_t x1)
+void kernel_init (struct boot_args *boot_args, uint64_t x1, uint64_t x2)
 {
-	vm_address_t membase, fdtvirt;
+	uint64_t x0;
 	const DTNode *dt_root;
-	const char *machine;
-	cpu_t boot_cpu_data;
-	vm_size_t memsize;
-	int len;
+	phys_addr_t membase;
+	phys_size_t memsize;
+	cpu_t boot_cpu;
 
-	/* initialise the boot cpu_data structure */
-	cpu_data_init (&boot_cpu_data);
-	boot_cpu_data.intstack_top = (vm_offset_t) &intstack_top;
-	boot_cpu_data.excepstack_top = (vm_offset_t) &excepstack_top;
+	/* initialise the cpu_data for the boot cpu */
+	cpu_data_init (&boot_cpu);
+	boot_cpu.intstack_top = (vm_address_t) &intstack_top;
+	boot_cpu.excepstack_top = (vm_address_t) &excepstack_top;
 
-	/* enable early kernel logging */
-	kernel_debug_early_log_init ();
-	kernel_debug_early_log ("\n");
+	/* verify the boot parameters */
+	if (boot_args->version != BOOT_ARGS_VERSION_1_1)
+		panic ("boot_args version mismatch\n");
 
-#if DEFAULTS_KERNEL_NO_BOOTLOADER
+	/* convert the fdt base to a virtual address */
+	if (boot_args->fdtbase < boot_args->virtbase)
+		boot_args->fdtbase = (uint64_t) (boot_args->virtbase + 
+			(boot_args->fdtbase - boot_args->physbase));
 
-	kprintf ("NOTICE: KERNEL IN NO-BOOTLOADER MODE. VIRTUAL MEMORY, DEVICE TREE AND MACHINE INTERFACE ARE DISABLED\n");
-	kprintf ("BOOTING TINYOS ON PHYS_CPU: 0x%08llx [0x%llx]\n",
-		boot_cpu_data.cpu_num, kernel_init);
-	kprintf ("KERNEL: tinyOS Kernel Version %s; %s; %s:%s/%s_%s\n\n\n",
-		KERNEL_BUILD_VERSION, __TIMESTAMP__,
-		DEFAULTS_KERNEL_BUILD_MACHINE,
-		KERNEL_SOURCE_VERSION, KERNEL_BUILD_STYLE, KERNEL_BUILD_TARGET);
-#else
-	/* verify boot arguments */
-	if (args->version != BOOT_ARGS_VERSION_1_1)
-		kprintf ("error: mismtached bootargs struct\n");
-
-	/* convert the device tree base to KVA if it isn't already */
-	if (args->fdtbase < args->virtbase)
-		fdtvirt = (void *) ((uintptr_t) args->virtbase + (args->fdtbase - args->physbase));
-
-	/* initialise the device tree handler */
-	DeviceTreeInit (fdtvirt, args->fdtsize);
+	/* initialise the device tree */
+	DeviceTreeInit ((void *) boot_args->fdtbase, boot_args->fdtsize);
 	dt_root = BootDeviceTreeGetRootNode ();
 
-	/* parse the cpu topology */
+	/* update the address of the boot args struct */
+	x0 = (uint64_t) boot_args->virtbase + (((uint64_t) boot_args) - ((uint64_t) boot_args->physbase)); //(boot_args->virtbase + (x0 - boot_args->physbase));
+	boot_args = (struct boot_args *) x0;
+
+	/* fetch platform memory layout and setup virtual memory */
+	platform_get_memory (&membase, &memsize);
+	arm_vm_init (boot_args, membase, memsize);
+
+	/* initialise the console and enable kprintf */
+	kprintf_init ();
+
+	/* now we have logs, verify the device tree */
+	DeviceTreeVerify ();
+
+	/* parse the machine cpu topology */
 	machine_parse_cpu_topology ();
+	boot_cpu.cpu_num = machine_get_boot_cpu_num ();
+	assert (boot_cpu.cpu_num <= machine_get_max_cpu_num ());
 
-	boot_cpu_data.cpu_num = machine_get_boot_cpu_num ();
-	assert (boot_cpu_data.cpu_num <= machine_get_max_cpu_num ());
+	cpu_data_register (&boot_cpu);
+	cpu_set_boot_cpu (&boot_cpu);
 
-	/* register the boot cpu within the cpu_data array */
-	cpu_data_register (&boot_cpu_data);
-	cpu_set_boot_cpu (&boot_cpu_data);
-
-	// TODO: serial_init() - properly discover and setup the serial interface
-
-	/* boot cpu initialisation */
+	/* cpu initialisation */
 	cpu_init ();
 
 	/* boot banner */
-	print_boot_banner (boot_cpu_data.cpu_num, args->tboot_vers);
+	print_boot_banner (dt_root, boot_cpu.cpu_num, boot_args->tboot_vers);
 
-	/* output the machine configuration */
-	DeviceTreeLookupPropertyValue (*dt_root, "compatible", &machine, &len);
-	kprintf ("Machine: %s\n", machine);
-	kprintf ("Machine: detected '%d' cpus across '%d' clusters\n",
-		machine_get_num_cpus (), machine_get_num_clusters ());
+	// debugging
+	kprintf ("DEBUG x0: 0x%lx, x1: 0x%lx, x2: 0x%lx\n", x0, x1, x2);
 
-	/* init kernel page tables */
-	platform_get_memory (&memsize, &membase);
-	arm_vm_init (args, membase, memsize);
+	/* configure remaining virtual memory subsystems */
+	vm_configure ();
 
-	// we are no longer using the bootstrap pagetables from this point onwards
-
-	/**
-	 * Initialise the interrupt controller. The machine interface will handle
-	 * reading the device tree to discover which interrupt controller is being
-	 * used, and then whatever addresses are associated with it.
-	 * 
-	 * TOOD: 	we also need to map the virtual memory region. At the moment we
-	 * 			are directly accessing physical memory. 
-	*/
+	/* configure the interrupt controller */
 	machine_init_interrupts ();
 
+	kprintf("minimal kernel startup complete\n");
 
-#endif
+	//machine_register_interrupt (4, 0);
+	//machine_send_interrupt (4, 1);
+	//machine_send_interrupt (4, 1);
+	//machine_send_interrupt (4, 1);
 
-////////////////////////////////////////////////////////////////////////////////
-// DEBUG AREA - EVERYTHING HERE IS SHIT AND DOESN'T WORK :-(
-//
+	kprintf("kernel_init complete\n");
 
-	int test = 8;
-	machine_register_interrupt (test, 0);
-	machine_send_interrupt (test, 1);
-
-	/* test the timer */
-	machine_register_interrupt (30, 0);
-	//machine_enable_timers ();
-
-
-	// TODO: cpu_smp_init() - bring up secondary cpus
-	// PSCI??
-
-	kprintf ("--KERNEL_SETUP_COMPLETE--\n");
-
-///////////////////////////////////////////////////////////////////////////////
-	/* kernel_init shouldn't reach here, only if switching to kernel_task fails */
-	kprintf ("\n\n__halt\n");
-//	asm ("brk #1");
-	asm ("b .");
+	//__asm__ volatile ("brk #1");
+	__asm__ volatile ("b .");
 }
 
-static void print_boot_banner (cpu_number_t cpu_num, const char *tboot_vers)
+void print_boot_banner (const DTNode *dt_root, cpu_number_t cpu_num, 
+	const char *tboot_vers)
 {
+	char *machine;
+	int len;
+
 	kprintf ("Booting TinyOS on Physical CPU: 0x%08llx [0x%llx]\n",
 		cpu_num, kernel_init);
 	kprintf ("tinyOS Kernel Version %s; %s; %s:%s/%s_%s\n",
@@ -180,4 +150,9 @@ static void print_boot_banner (cpu_number_t cpu_num, const char *tboot_vers)
 		DEFAULTS_KERNEL_BUILD_MACHINE,
 		KERNEL_SOURCE_VERSION, KERNEL_BUILD_STYLE, KERNEL_BUILD_TARGET);
 	kprintf ("tBoot version: %s\n", tboot_vers);
+
+	DeviceTreeLookupPropertyValue (*dt_root, "compatible", &machine, &len);
+	kprintf ("machine: %s\n", machine);
+	kprintf ("machine: detected '%d' cpus across '%d' clusters\n",
+		machine_get_num_cpus (), machine_get_num_clusters ());
 }

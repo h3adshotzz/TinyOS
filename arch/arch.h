@@ -194,4 +194,9 @@ DEFINE_SYSOP_TYPE_FUNC(dmb, oshst)
 DEFINE_SYSOP_TYPE_FUNC(isb, sy)
 DEFINE_SYSOP_FUNC(isb)
 
+// tmp
+extern uint32_t arm64_read_cpuid (void);
+extern uint32_t arm64_read_icc_iar1_el1 (void);
+extern void arm64_write_icc_eoir1_el1 (uint32_t val);
+
 #endif /* __ARCH_ARCH_H__ */

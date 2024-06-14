@@ -20,25 +20,22 @@
 //===----------------------------------------------------------------------===//
 
 /**
- * 	Name:	machine/machine_timer.c
- * 	Desc:	Kernel Machine Interface - ARM Generic Virtual Timer.
+ * 	Name:	platform.h
+ * 	Desc:	Kernel platform interface.
  */
 
-#include <arch/arch.h>
-#include <kern/defaults.h>
-#include <kern/machine.h>
+#ifndef __PLATFORM_H__
+#define __PLATFORM_H__
 
-#include <libkern/assert.h>
 #include <libkern/types.h>
+#include <kern/vm/pmap.h>
+#include <kern/vm/vm.h>
 
-kern_return_t
-machine_enable_timers ()
-{
-	/* Check that interrupts are still enabled */
-	//assert (machine_get_interrupts_enabled() == FALSE);
+/* platform memory layout */
+kern_return_t platform_get_memory (phys_addr_t *membase, phys_size_t *memsize);
 
-	/* Register the interrupt and enable the timer */
-	arm64_timer_test (0x50000);
-	machine_log ("virtual timers enabled\n");
-}
+/* interrupt controller */
+kern_return_t platform_get_gicv3 (void);
 
+
+#endif /* __platform_h__ */

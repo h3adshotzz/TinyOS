@@ -138,21 +138,3 @@
 2:
 .endm
 
-
-
-.macro print_val val
-    mov     x28, x0
-    mov     x0, \val
-    bl      asm_output_val
-    mov     x0, x28
-.endm
-
-.macro print_idx_val idx, val
-    mov     x27, x0
-    mov     x28, x1
-    mov     x0, \idx
-    mov     x1, \val
-    bl      asm_output_idx_val
-    mov     x1, x28
-    mov     x0, x27
-.endm

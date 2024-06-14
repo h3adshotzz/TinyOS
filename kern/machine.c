@@ -19,149 +19,138 @@
 //
 //===----------------------------------------------------------------------===//
 
-/**
- * 	Name:	machine.h
- * 	Desc:	Kernel machine interface.
- */
-
-#include <kern/defaults.h>
 #include <kern/machine.h>
-
-#include <libkern/assert.h>
+#include <arch/arch.h>
 
 #include <platform/devicetree.h>
+#include <libkern/assert.h>
 
 #include <tinylibc/byteswap.h>
-#include <tinylibc/limits.h>
+#include <tinylibc/string.h>
 
-/* Declare the cpu topology structure */
-PRIVATE_STATIC_DEFINE(machine_topology_info_t)	topology_info;
+/* translate mpidr to cpu number */
+#define MPIDR_TO_CPU_NUM(__mpidr)	(__mpidr & (MPIDR_AFF1_MASK | MPIDR_AFF0_MASK))
+
+/* declare the cpu topology structure */
+static machine_topology_info_t		topology_info;
+
+/* cpu and cluster arrays */
+static machine_topology_cluster_t	clusters[DEFAULTS_MACHINE_MAX_CPU_CLUSTERS];
+static machine_topology_cpu_t		cpus[DEFAULTS_MACHINE_MAX_CPUS];
 
 /**
- * Name:	machine_read_prop
- * Desc:	Private function to read a particular property from the device tree.
- * 			Ideally we shouldn't do this outside of the device tree interface,
- * 			but it's necessary in some cases.
-*/
-PRIVATE_STATIC_DEFINE_FUNC(uint64_t)
-machine_read_prop (const DTNode node, const char *prop_name)
+ *	machine_read_prop
+ *
+ *	Read a particular property from the device tree. Ideally, this shouldn't be
+ *	done outside of the devicetree wrapper, but in some cases doing it this way
+ *	is required.
+ */
+static uint64_t machine_read_prop (const DTNode node, const char *prop_name)
 {
-	void const *prop;
 	unsigned int prop_size;
+	void const *prop;
 
-	if (DeviceTreeLookupPropertyValue (node, prop_name, &prop, &prop_size) ==
-		kDeviceTreeSuccess) {
-		return __bswap_32 (*((uint32_t const *) prop));
-	}
 	return 0;
 }
 
-/* Topology getters */
+/* machine topology getters */
 unsigned int machine_get_boot_cpu_num () {return topology_info.boot_cpu->cpu_id;}
 unsigned int machine_get_num_clusters () {return topology_info.num_clusters;}
 unsigned int machine_get_max_cpu_num () {return topology_info.max_cpu_id;}
 unsigned int machine_get_num_cpus () {return topology_info.num_cpus;}
 
-/******************************************************************************/
+/*****************************************************************************/
 
-cpu_number_t
-machine_get_cpu_num ()
+cpu_number_t machine_get_cpu_num ()
 {
-	uint64_t mpidr_val;
 	cpu_number_t cpu_num;
 
-	mpidr_val = arm64_read_cpuid ();
-	cpu_num = (mpidr_val & (MPIDR_AFF1_MASK | MPIDR_AFF0_MASK));
+	cpu_num = MPIDR_TO_CPU_NUM (arm64_read_cpuid ());
 
-	/* Until SMP is enabled, don't verify against hte topology */
-//	for (cpu_number_t i = 0; i < topology_info.num_cpus; i++) {
-//		if (topology_info.cpus[i].cpu_phys_id == cpu_num) {
-//			assert (cpu_num <= (unsigned int) machine_get_max_cpu_num ());
-//			return cpu_num;
-//		}
-//	}
+	/* until smp is enabled, don't verify this against the topology */
+	for (cpu_number_t i = 0; i < topology_info.num_cpus; i++) {
+		if (topology_info.cpus[i].cpu_phys_id == cpu_num) {
+			assert (cpu_num <= (unsigned int) topology_info.max_cpu_id);
+			return cpu_num;
+		}
+	}
 
 	return cpu_num;
 }
 
-char *
-machine_get_name ()
+char *machine_get_name ()
 {
-	DTNode *node;
+	const DTNode *node;
 	char *machine;
 	int len;
 
 	node = BootDeviceTreeGetRootNode ();
-
 	DeviceTreeLookupPropertyValue (*node, "compatible", &machine, &len);
+
 	return machine;
 }
 
-kern_return_t
-machine_parse_cpu_topology (void)
+kern_return_t machine_parse_cpu_topology (void)
 {
 	DTNode parent, node, subnode;
 	const char *cpu_map_path;
 	DeviceTreeIterator iter;
-	uint16_t boot_cpu;
+	cpu_number_t boot_cpu;
 	int res;
 
-	boot_cpu = arm64_read_cpuid ();
+
+	/* the cpu topology should only ever be called on the boot cpu */
+	boot_cpu = MPIDR_TO_CPU_NUM (arm64_read_cpuid ());
 
 	/**
-	 * the default device tree in qemu defines a 'socket0'. Although the kernel can still
-	 * read these device trees, in the case of a machine with multiple sockets, only the
-	 * first will be read.
-	*/
-	if (kDeviceTreeSuccess == DeviceTreeNodeExists ("/cpus/cpu-map/socket0")) {
-		cpu_map_path = "/cpus/cpu-map/socket0";
-	} else {
-		cpu_map_path = "/cpus/cpu-map";
-	}
+	 * the following is a workaround for an issue with libfdt. once the kernel
+	 * is running with KVAs, meaning in high memory, when libfdt tries to do
+	 * a search for a node, e.g. /cpus/cpu-map, it returns with an error.
+	 *
+	 * the only way to get around this is to first manually search for /cpus,
+	 * and then search for the cpu-map within it. we can't directly search for
+	 * /cpus/cpu-map.
+	 *
+	 * what this essentially means is that we cannot support any "socket"
+	 * entries within the device tree cpu-map.
+	 *
+	 */
+	cpu_map_path = "/cpus/cpu-map";
 
-#if DEFAULTS_MACHINE_LIBFDT_WORKAROUND
-	/**
-	 * TEMP:	The following is a workaround for an issue with libfdt. Once the
-	 * 			kernel is running with KVAs, meaning in high memory, when libfdt
-	 * 			tries to do a search for a node, e.g. /cpus/cpu-map, it returns
-	 * 			with an error.
-	 * 
-	 * 			The only way to get around this is to first manually search for
-	 * 			/cpus, and then search for cpu-map within it. We can't directly
-	 * 			search for /cpus/cpu-map.
-	 * 
-	 * 			What this also means is that currently we cannot support any
-	 * 			"socket" entries in the cpu-map.
-	*/
+#if DEFAULTS_SET(DEFAULTS_MACHINE_LIBFDT_WORKAROUND)
+	
+	/* look for "/cpus" first */
 	res = DeviceTreeLookupNode ("/cpus", &parent);
 	assert (res == kDeviceTreeSuccess);
 
+	/* now look for the cpu-map */
 	res = DeviceTreeIteratorInit (&parent, &iter);
-	while (kDeviceTreeSuccess == DeviceTreeIterateNodes (&iter, &node)) {
+	while (DeviceTreeIterateNodes (&iter, &node) == kDeviceTreeSuccess) {
 		if (!strcmp (node.name, "cpu-map"))
 			parent = node;
 	}
+
 #else
+
+	/* if the workaround is not needed, we can directly search for cpu_map_path */
 	res = DeviceTreeLookupNode (cpu_map_path, &parent);
 	assert (res == kDeviceTreeSuccess);
-#endif
 
+#endif
+	
+	/* initialise a new iterator for the cpu-map */
 	res = DeviceTreeIteratorInit (&parent, &iter);
 	assert (res == kDeviceTreeSuccess);
 
-	/**
-	 * TODO:	Debug why these can't be declared globally and added to 
-	 * 			topology_info when it's created.
-	*/
-	machine_topology_cluster_t clusters[DEFAULTS_KERNEL_MAX_CPU_CLUSTERS];
-	machine_topology_cpu_t cpus[DEFAULTS_KERNEL_MAX_CPUS];
+	topology_info.num_clusters = 0;
+	topology_info.num_cpus = 0;
 
 	/**
-	 * Loop through the various clusters in the device tree to identify available
-	 * cpus. Clusters and cpus are numbered from zero. Cpus have a physical and
-	 * logial id, where the physical id is directly read from the device tree,
-	 * and the logical id assigned by tinyKern.
-	*/
+	 * loop through the clusters in the device tree to identifiy available
+	 * cpus. clusters and cpus are numbered from zero, and cpus have both a
+	 * physical and logical identifier. the physical id is read directly
+	 * from the device tree, and the logical id is assigned by the kernel.
+	 */
 	while (kDeviceTreeSuccess == DeviceTreeIterateNodes (&iter, &node)) {
 		machine_topology_cluster_t cluster;
 		DeviceTreeIterator subiter;
@@ -175,7 +164,7 @@ machine_parse_cpu_topology (void)
 		while (kDeviceTreeSuccess == DeviceTreeIterateNodes (&subiter, &subnode)) {
 			machine_topology_cpu_t cpu;
 			DTNode cpu_node;
-			void *entry;
+			char *entry;
 			int len;
 
 			cpu.cpu_id = topology_info.num_cpus;
@@ -200,7 +189,7 @@ machine_parse_cpu_topology (void)
 		clusters[topology_info.num_clusters] = cluster;
 		topology_info.num_clusters += 1;
 		topology_info.max_cluster_id = MAX(topology_info.max_cluster_id, cluster.cluster_id);
-	}
+	}	
 
 	topology_info.clusters = clusters;
 	topology_info.cpus = cpus;

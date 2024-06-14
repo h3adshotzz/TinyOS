@@ -20,26 +20,20 @@
 //===----------------------------------------------------------------------===//
 
 /**
- * 	Name:	kdebug.h
- * 	Desc:	Kernel debug interface.
+ *	Name:	vm_types.h
+ *	Desc:	Virtual memory type definitions.
  */
 
+#ifndef __KERN_VM_TYPES_H__
+#define __KERN_VM_TYPES_H_
 
-#ifndef __KERNEL_DEBUG_H__
-#define __KERNEL_DEBUG_H__
+#include <tinylibc/stdint.h>
 
-#include <libkern/types.h>
+typedef uint64_t	vm_address_t;		/* Virtual memory address */
+typedef uint64_t	vm_offset_t;		/* Virtual memory offset */
+typedef uint64_t	vm_size_t;			/* Virtual memory size */
 
+typedef int			vm_map_type_t;		/* Mapping region type */
+typedef int			vm_prot_t;			/* Mapping protection */
 
-/* Kernel Early Logging APIs */
-void kernel_debug_early_log_init ();
-void kernel_debug_early_log ();
-
-/* Kernel Debugging macros */
-#define KERNEL_DEBUG_HALT()                             \
-    do {                                                \
-        kprintf ("\n\nKERNEL_DEBUG: halting...\n");     \
-        asm volatile ("brk #1");                        \
-    } while (0);
-
-#endif /* __kernel_debug_h__ */
+#endif

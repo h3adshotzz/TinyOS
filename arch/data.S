@@ -20,42 +20,49 @@
 //===----------------------------------------------------------------------===//
 
 /**
- * 	Name:	data.S
- *	Desc:	Static memory carvouts for stacks, pagetable regions, etc
- *
+ *	Name:	data.S
+ *	Desc:	Static memory carvouts for stack, pagetables, etc.
  */
 
 #include <kern/defaults.h>
 
-	.section 	".rodata"
+/******************************************************************************
+ * Stacks
+ *****************************************************************************/
+
+	.section	".rodata"
 	.align		16
 
-	/* Interrupt stack */
-	.globl intstack_base
+	/* Interrupt Stack */
+	.globl		intstack_base
 intstack_base:
-	.space DEFAULTS_KERNEL_STACK_SIZE
-	.globl intstack_top
+	.space		DEFAULTS_KERNEL_VM_STACK_SIZE
+	.globl		intstack_top
 intstack_top:
 
-	/* Exception stack */
-	.globl excepstack_base
+	/* Exception Stack */
+	.globl		excepstack_base
 excepstack_base:
-	.space DEFAULTS_KERNEL_STACK_SIZE
-	.globl excepstack_top
+	.space		DEFAULTS_KERNEL_VM_STACK_SIZE
+	.globl		excepstack_top
 excepstack_top:
 
 	/* Stack region guard */
-	.globl _stack_high_guard
-_stack_high_guard:
-	.space DEFAULTS_KENREL_VM_PAGE_SIZE
+	.globl		__stack_high_guard
+__stack_high_guard:
+	.space		DEFAULTS_KERNEL_VM_PAGE_SIZE
 
+/******************************************************************************
+ * Pagetables
+ *****************************************************************************/
 
-	/* Kernel Pagetables Region */
-	.align 16
-	.globl pagetables_region_base
+	.section	".rodata"
+	.align		16
+	.globl		pagetables_region_base
 pagetables_region_base:
-	.space DEFAULTS_KENREL_VM_PAGE_SIZE*16
-	.globl pagetables_region_end
+	.space		DEFAULTS_KERNEL_VM_PAGE_SIZE*16
+	.globl		pagetables_region_end
 pagetables_region_end:
+
 
 /* vim: set ts=4 */

@@ -19,15 +19,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-/**
- * 	Name:	kprintf.h
- * 	Desc:	Kernel printf.
- */
-
 #include <tinylibc/stdint.h>
 #include <tinylibc/string.h>
 
 #include <kern/kprintf.h>
+#include <kern/defaults.h>
 #include <drivers/pl011/pl011.h>
 
 /* printf formatting */
@@ -35,38 +31,101 @@
 #define POPT_LONGLONG	(1 << 2)
 #define POPT_PADRIGHT	(1 << 3)
 
-/* Log colours */
-#define LOG_COLOUR_YELLOW          "\x1b[38;5;214m"
-#define LOG_COLOUR_RED             "\x1b[38;5;88m"
-#define LOG_COLOUR_BLUE            "\x1b[38;5;32m"
-#define LOG_COLOUR_GREEN           "\x1b[32m"
-#define LOG_COLOUR_RESET           "\x1b[0m"
-
-static const char *interfaces[1] =
-{
-	"machine",
-	NULL,
-};
-
-static int internal_printf (const char *fmt, va_list ap);
+static int console_initialised = 0;
+static int internal_kprintf (const char *fmt, va_list ap);
 
 /**
- * This is a special log function so we don't have to write the name of the
- * interface in every message
-*/
+ * kprintf is an early logging interface for the kernel. Eventually we'll have
+ * some kind of console driver, stdout, etc. For now, the kernel just calls
+ * kprintf_init() and can then start logging.
+ */
+void kprintf_init ()
+{
+	pl011_init (DEFAULTS_KERNEL_VM_PERIPH_BASE,
+				DEFAULTS_KERNEL_DEBUG_UART_BAUD,
+				DEFAULTS_KERNEL_DEBUG_UART_CLK);
+	pl011_puts ("\n");
+
+	console_initialised = 1;
+}
+
+/******************************************************************************
+ * Interface logger
+ *
+ * Each Kernel component/interface has it's own logger macro, so logs can be
+ * properly prefixed, e.g. vm.c logs are prefixed "vm: ". In the header, create
+ * the macro calling interface_log, passing the desired prefix.
+ *
+ *****************************************************************************/
 int interface_log (const char *interface, const char *fmt, ...)
 {
-	va_list		args;
-	int			res;
+	va_list	args;
+	int	res;
 
 	kprintf ("%s: ", interface);
 	va_start (args, fmt);
-	res = internal_printf (fmt, args);
+	res = internal_kprintf (fmt, args);
 	va_end (args);
 
 	return res;
 }
 
+/*******************************************************************************
+ * Hexdump
+ *
+ * Print a hexdump of 'size' bytes from a desired memory address.
+ *
+ ******************************************************************************/
+
+void kprintf_hexdump (char *mem, uint64_t base, uint64_t size)
+{
+		uint32_t offset;
+	int ws, lines, count, pos;
+
+	offset = base;
+	lines = size / 16;
+
+	if (size % 16)
+		lines += 1;
+
+	pos = 0;
+	for (int i = 0; i < lines; i++) {
+		uint8_t ln[16];
+
+		count = 16;
+		if ((size - (i * 16)) / 16 == 0)
+			count = size % 16;
+
+		kprintf ("%08x  ", offset);
+		for (int j = 0; j < count; j++) {
+			uint8_t byte = (uint8_t) mem[pos];
+			kprintf ("%02x ", byte);
+
+			pos++;
+			ln[j] = byte;
+		}
+
+		for (int k = 0, ws = 16 - count; k < ws; k++)
+			kprintf ("    ");
+
+		kprintf (" |");
+		for (int l = 0; l < 16; l++) {
+			if (ln[l] < 0x20 || ln[l] > 0x7e)
+				kprintf (".");
+			else
+				kprintf ("%c", (char) ln[l]);
+		}
+
+		kprintf ("|\n");
+		offset += 0x10;
+	}
+	kprintf ("\n");
+}
+
+/*******************************************************************************
+ * printf API
+ *
+ ******************************************************************************/
 
 int kprintf (const char *fmt, ...)
 {
@@ -80,24 +139,36 @@ int kprintf (const char *fmt, ...)
 	return 0;
 }
 
-int vprintf (const char *fmt, va_list ap)
+int sprintf (char *buffer, const char *fmt, ...)
 {
-	return internal_printf (fmt, ap);
+
 }
 
+int snprintf (char *buffer, size_t size, const char *fmt, ...)
+{
+
+}
+
+int vprintf (const char *fmt, va_list ap)
+{
+	return internal_kprintf (fmt, ap);
+}
+
+/*******************************************************************************
+ * printf backend
+ *
+ ******************************************************************************/
 
 static void output_stdout (char c)
 {
-	// update this once the serial interface is implemented.
+	// TODO: this will be updated when the console driver is implemented.
 	if (c != '\0')
 		pl011_putc (c);
 }
 
 static char *llstr (char *buf, unsigned long long n, int len)
 {
-	int digit;
-	int pos = len;
-	int neg = 0;
+	int digit, pos = len, neg = 0;
 
 	buf[--pos] = 0;
 	while (n >= 10) {
@@ -111,10 +182,10 @@ static char *llstr (char *buf, unsigned long long n, int len)
 
 static char *llhex (char *buf, unsigned long long u, int len)
 {
-	int pos = len;
-	unsigned int d;
-	static const char hextable[] = { '0', '1', '2', '3', '4', '5', '6', '7', 
+	static const char hextable[] = { '0', '1', '2', '3', '4', '5', '6', '7',
 									 '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+	unsigned int d;
+	int pos = len;
 
 	buf[--pos] = 0;
 	do {
@@ -125,7 +196,7 @@ static char *llhex (char *buf, unsigned long long u, int len)
 	return &buf[pos];
 }
 
-static int internal_printf (const char *fmt, va_list ap)
+static int internal_kprintf (const char *fmt, va_list ap)
 {
 	unsigned long long n;
 	const char *str;
@@ -133,6 +204,9 @@ static int internal_printf (const char *fmt, va_list ap)
 	int width = 0, len = 0;
 	char buf[64];
 	char c;
+
+	if (!console_initialised)
+		return -1;
 
 	for (;;) {
 		/**

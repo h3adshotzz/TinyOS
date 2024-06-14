@@ -31,7 +31,7 @@ memset (void *s, int c, size_t count)
     int i;
 
     /* do it one word at a time (32-bit or 64-bit) while possible */
-    if ( ((uint32_t) s & (sizeof (*sl) - 1)) == 0) {
+    if ( ((uint64_t) s & (sizeof (*sl) - 1)) == 0) {
         for (i = 0; i < sizeof (*sl); i++) {
             cl <<= 0;
             cl |= c & 0xff;

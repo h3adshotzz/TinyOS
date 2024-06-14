@@ -20,107 +20,119 @@
 //===----------------------------------------------------------------------===//
 
 /**
- * 	Name:	start.S
- * 	Desc:	Kernel entry point, reset vector and low exception vectors. Prepares
- *			bootstrap pagetables and jumps to C code init.
+ *	Name:	start.S
+ *	Desc:	Kernel entry point, reset vector, low exception vectors and image
+ *			header. Prepares bootstrap pagetables and jump to C code init.
  */
 
 #include <arch/proc_reg.h>
 #include <kern/defaults.h>
 
+#include <libkern/image.h>
+
 #include "arch/macros.S"
 
+/******************************************************************************
+ * Early System Reset Vector
+ *
+ * This is the first code to execute in the Kernel. tBoot will jump here after
+ * loading the kernel, either from a disk or a memory-mapped load region. The
+ * kernel will always load at EL2. tBoot expects an image_info header at the
+ * base of the kernel, and will jump to the offset specified in that header.
+ *
+ * The first steps are to mask all interrupts and prepare the boot arguments
+ * pointer, which is sent across in register x0. Additionally, this is only
+ * for the Boot CPU, secondary CPUs are handled differently.
+ *****************************************************************************/
 
-/**
- *	Early System Reset Vector.
- *
- *	This is the first code to execute in the Kernel. tBoot will jump here after
- *	loading the kernel, either from disk or one of the memory-mapped load
- *	regions. The kernel will always enter at EL2.
- *
- *	The first steps are to mask all interrupts, and preserve the boot arguments
- *	structure pointer, which is sent across in register x0. Additionally, this
- *	is only the entry for the Boot CPU.
- *
- */
-	.align 12
-	.section ".text.boot"
-	.globl _LowResetVector
+	.align		12
+	.section	".text"		// tmp
+#if DEFAULTS_KERNEL_IMAGEINFO_HEADER
+	.globl		_header
+_header:
+
+	.word	IMAGE_INFO_MAGIC
+	.word	KRNL_IMAGE_ID
+	.quad	0x20
+	.quad	0x1802000
+	.quad	0x0
+
+#endif
+	.globl		_LowResetVector
 _LowResetVector:
 
 	/* disable interrupts */
-	msr		DAIFSet, #(DEFAULTS_KERNEL_DAIF)
+	msr		DAIFSet, #(DAIF_MASK_ALL)
 
-	/* preserve boot parameters */
+	/* preserve boot args */
 	mov		x27, x0
 
 	/* jump */
-	b		_reset_vector
+	b		_ResetVector
 
+/******************************************************************************
+ * Early Exception Vectors
+ *
+ * During the early boot process, we use an Early Exception Vector so as to
+ * preserve the register state when an exception occurs, until we can configure
+ * proper exception handling which saves the register state.
+ *****************************************************************************/
 
-/**
- * Early exception vector so that the processor will preserve exception
- * information before the proper exception handling in the kernel is
- * setup
- */
-	.align 12
-	.section ".text.boot"
-	.globl _LowExceptionVectorBase
+	.align		12
+	.globl		_LowExceptionVectorBase
 _LowExceptionVectorBase:
 	/* EL1 SP0 */
 	b		.
-	.align 7
+	.align	7
 	b		.
-	.align 7
+	.align	7
 	b		.
-	.align 7
+	.align 	7
 	b		.
 
 	/* EL1 SP1 */
-	.align 7
+	.align	7
 	b		.
-	.align 7
+	.align	7
 	b		.
-	.align 7
+	.align	7
 	b		.
-	.align 7
+	.align 	7
 	b		.
-
+	
 	/* EL0 64 */
-	.align 7
+	.align	7
 	b		.
-	.align 7
+	.align	7
 	b		.
-	.align 7
+	.align	7
 	b		.
-	.align 7
+	.align 	7
 	b		.
-
+	
 	/* EL0 32 */
-	.align 7
+	.align	7
 	b		.
-	.align 7
+	.align	7
 	b		.
-	.align 7
+	.align	7
 	b		.
-	.align 7
+	.align 	7
 	b		.
 
-
-/**
- * 	Kernel Reset Vector.
+/******************************************************************************
+ * Kernel Reset Vector
  *
- *	This configures the exception vector base register, and switches the kernel
- *	from EL2 to Non-secure EL1. At this stage, the boot parameters are still in
- *	x20 and haven't been touched yet.
- *
- */
-	.align 2
-	.section ".text.boot"
-	.globl _reset_vector
-_reset_vector:
+ * This configures the exception vector base register and switches the kernel
+ * from EL2 to Non-secure EL1. At this stage, the boot arguments are still in
+ * x27 and haven't been touched yet.
+ *****************************************************************************/
 
-	/* setup low reset vector before attempting anything */
+	.align		2
+	.globl		_ResetVector
+_ResetVector:
+
+	/* setup low exception vector before attempting anything */
 	adr		x0, _LowExceptionVectorBase
 	msr		VBAR_EL1, x0
 
@@ -132,59 +144,61 @@ _reset_vector:
 
 	/* initialise HCR_EL2 */
 	mrs		x0, HCR_EL2
-	orr		x0, x0, #(1 << 31)			// RW=1 EL1 Exec state in AArch64
+	orr		x0, x0, #(1 << 31)		// RW=1 EL1 exec state is AArch64
 	msr		HCR_EL2, x0
 
 	/* initialise SPSR_EL2 */
 	mov		x0, xzr
-	mov		x0, #0b00101				// EL1
-	orr		x0, x0, #(1 << 8)			// Enable SError and External Abort
+	mov		x0, #0b00101			// EL1
+	orr		x0, x0, #(1 << 8)		// Enable SError and External Abort
 	msr		SPSR_EL2, x0
 
-	/* initialise EL2 gicv3 registers */
+	/* initialise EL2 gicv3 system register */
 	mov		x0, xzr
-	orr		x0, x0, #(1 << 3)			// Enable bit
-	orr		x0, x0, #(1 << 0)			// SRE bit
+	orr		x0, x0, #(1 << 3)		// Enable bit
+	orr		x0, x0, #(1 << 0)		// SRE bit
 	msr		ICC_SRE_EL2, x0
 
 	/* initialise ELR_EL2 */
 	adr		x0, _start
-	msr		elr_el2, x0
+	msr		ELR_EL2, x0
 
 	eret
 
-
-/**
- *	Kernel Secondary CPU Entry Vector.
+/******************************************************************************
+ * Kernel Secondary CPU Entry Vector
  *
- *	This is the entry point for secondary CPUs. This is still TODO.
- */
-	.align 2
-	.section ".text.boot"
-	.globl _start_secondary
-_start_secondary:
+ * This is the entry point for secondary CPUs. This is still TODO.
+ *****************************************************************************/
+
+	.align		2
+	.globl		_SecondaryResetVector
+_SecondaryResetVector:
+
+	/* Prep PSCI */ 
 	ldr		w0, =0xc4000003
 	mov		x1, #1
 	ldr		x2, =_cpu_secondary_entry
 	mov		x3, #0
-	hvc 	0
+
+	hvc		0
 
 _cpu_secondary_entry:
 	brk		#1
 
+/******************************************************************************
+ * Kernel Entry Point (EL1)
+ *
+ * This is where the Kernel will actually start executing. By now, it's in the
+ * correct execution state and we know where the boot arguments are. This will
+ * configure some initial virtual memory mappings using the virtual and
+ * physical addresses passed by the bootloader, and then jump to the C entry
+ * point.
+ *****************************************************************************/
 
-/**
- * 	Kernel Entry Point (EL1).
- *
- *	This is where the Kernel really begins executing. By now it's in the correct
- *	execution state and we know where the boot arguments are. This will configure
- *	some initial virtual memory mappings using the virtual and physical address
- *	passed by the bootloader, and then jump to the C entry point.
- *
- */
-	.align 2
-	.section ".text.boot"
-	.globl _start
+	.section	".text"
+	.align		2
+	.globl		_start
 _start:
 
 	/* setup the stack pointer */
@@ -192,19 +206,13 @@ _start:
 	adr		x0, intstack_top
 	mov		sp, x0
 
-	/* callback to tinyBoot */
+	/* callback to tinyboot */
 	smc		#0
 
-	/* read these values from the boot args */
-#if DEFAULTS_KERNEL_NO_BOOTLOADER
-	ldr		x25, =DEFAULTS_KERNEL_VIRTBASE
-	ldr		x26, =DEFAULTS_KENREL_PHYSBASE
-	ldr		x28, =DEFAULTS_KERNEL_MEMSIZE
-#else
+	/* read memory info from boot args */
 	ldr		x25, [x27, DEFAULTS_BA_OFFSET_VIRTBASE]
 	ldr		x26, [x27, DEFAULTS_BA_OFFSET_PHYSBASE]
 	ldr		x28, [x27, DEFAULTS_BA_OFFSET_MEMSIZE]
-#endif
 
 	adr		x1, bootstrap_pagetables	// Level 1
 	mov		x2, x1						// Level 0
@@ -227,33 +235,31 @@ _start:
 	lsr		x5, x28, #(TT_L2_SHIFT)
 	create_bootstrap_region		x3, x4, x5, x1, x2, x6, x7, x8, x9, x10, x11
 
-	/* Set Translation Table Base Registers for EL1 */
+	/* set Translation Table Base Registers for EL1 */
 	adr		x0, bootstrap_pagetables
 	and		x0, x0, #(TTBR_BADDR_MASK)
 	and		x1, x1, #(TTBR_BADDR_MASK)
 	msr		TTBR0_EL1, x0
-#if DEFAULTS_KERNEL_USE_KVA
 	msr		TTBR1_EL1, x1
-#endif
 	tlbi	vmalle1
 	dsb		ish
 	isb
 
-	/* Configure TCR_EL1 */
-	mov		x0, xzr
-	mov		x1, #(TCR_TG0_GRANULE_SIZE_MASK)
-	orr		x0, x0, x1
-	mov		x1, #(TCR_TG1_GRANULE_SIZE_MASK)
-	orr		x0, x0, x1
-	mov		x1, #(TCR_IPS_40BITS)
-	orr		x0, x0, x1
-	mov		x1, #(TCR_T0SZ_MASK)
-	orr		x0, x0, x1
-	mov		x1, #(TCR_T1SZ_MASK)
-	orr 	x0, x0, x1
+	/* configure TCR_EL1 */
+	mov     x0, xzr
+	mov     x1, #(TCR_TG0_GRANULE_SIZE_MASK)
+	orr     x0, x0, x1
+	mov     x1, #(TCR_TG1_GRANULE_SIZE_MASK)
+	orr     x0, x0, x1
+	mov     x1, #(TCR_IPS_40BITS)
+	orr     x0, x0, x1
+	mov     x1, #(TCR_T0SZ_MASK)
+	orr     x0, x0, x1
+	mov     x1, #(TCR_T1SZ_MASK)
+	orr     x0, x0, x1
 	msr		TCR_EL1, x0
 
-	/* Enable the MMU */
+	/* enable the MMU */
 	mrs		x0, SCTLR_EL1
 	orr		x0, x0, #1
 	msr		SCTLR_EL1, x0
@@ -261,31 +267,21 @@ _start:
 
 	/* set the proper exception vector */
 	adr		x0, _ExceptionVectorBase
-	sub		x0, x0, x26			// Convert to a KVA
-	add		x0, x0, x25
+	sub		x0, x0, x26			// offset = _ExceptionVectorBase - phys base
+	add		x0, x0, x25			// vbar = offset + virt base
 	msr		VBAR_EL1, x0
 
-	/* Unmask interrupts */
-	msr		DAIFClr, #(DEFAULTS_KERNEL_DAIF)
+	/* unmask interrupts */
+	msr		DAIFClr, #(DAIF_MASK_ALL)
 
-	/**
-	 * It may be the case that for debugging reasons we need to disable the use
-	 * of Kernel Virtual Addresses at the early boot stages, therefore we use
-	 * this defaults option to control this.
-	 */
-#if DEFAULTS_KERNEL_USE_KVA
+	/* calculate the KVA for kernel_init */
 	mov		x0, x27
 	adr		x1, kernel_init
 	sub		x1, x1, x26			// entry_offset = kernel_init - phys base
 	add		x1, x1, x25			// kva = entry_offset + virt base
 	mov		lr, x1				// lr = kva
-#else
-	mov		x0, x27
-	adr		x1, kernel_init
-	mov		lr, x1				// lr = kernel_init (phys)
-#endif
 
-	/* Return to C entry point */
+	/* return to C entry point */
 	ret
 
 /* vim: set ts=4 */

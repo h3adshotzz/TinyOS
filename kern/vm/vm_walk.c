@@ -19,63 +19,51 @@
 //
 //===----------------------------------------------------------------------===//
 
-/**
- * 	Name:	vm.c
- * 	Desc:	Kernel Virtual Memory Interface.
- */
-
-#include <tinylibc/stdint.h>
-
-#include <libkern/assert.h>
-#include <libkern/boot.h>
-
-#include <kern/defaults.h>
 #include <kern/vm/pmap.h>
 #include <kern/vm/vm.h>
 
 #include <arch/proc_reg.h>
 
+#define PRINT_PADDING(__n)		for (int c=0;c<__n;c++){kprintf("\t");}
 
-#define PRINT_PADDING(_n)		for (int c=0;c<_n;c++) {kprintf("\t");}
-
-
-PRIVATE_STATIC_DEFINE_FUNC(void)
-_vm_pagetable_walk (tt_table_t *table_base, int level, int padding)
+static void _vm_pagetable_walk(tt_table_t *table_base, int level, int padding)
 {
-	// 1. loop through 512 entries in the table
-	// 2. decode each entry and determine if it's a block/page, or table entry
-	// 3. block/page entries are printed, table entries recursively call this
-	//	  again, until we reach an L3 table.
+	/**
+	 * 1.	loop through all 512 entries in the table
+	 * 2.	decode each entry and determine if it's a block/page, or table
+	 * 3.	block/page entries are printed, table entries recursively call
+	 * 		this function again, until we reach the last table.
+	*/
 
 	for (int idx = 0; idx < (TT_PAGE_SIZE / 8); idx++) {
 		tt_entry_t entry = table_base[idx];
 		uint8_t type = (entry & TTE_TYPE_MASK);
 
-		/* Table entry */
+		/* table entry */
 		if (type == TTE_TYPE_TABLE && level < 3) {
-			vm_address_t table_address = (entry & TT_TABLE_MASK);
+			vm_address_t table_address = ptokva(entry & TT_TABLE_MASK);
 			PRINT_PADDING(padding);
-			kprintf ("Level %d [%d]: Table Descriptor: 0x%llx\n",
-				level, idx, table_address);
+			kprintf("Level %d [%d]: Table descriptor @ 0x%lx:\n",
+				level, idx, (entry & TT_TABLE_MASK));
 
-			_vm_pagetable_walk ((tt_table_t *) table_address, level+1, padding+1);
+			_vm_pagetable_walk((tt_table_t *) table_address, level+1, padding+1);
 			continue;
 		}
 
 		/* Block */
 		if (type == TTE_TYPE_BLOCK) {
-			vm_address_t block_address = (entry & TT_BLOCK_MASK);
+			vm_address_t block_address = ptokva(entry & TT_BLOCK_MASK);
 			PRINT_PADDING(padding);
-			kprintf ("Level %d [%d]: Block Descriptor: 0x%llx\n",
-				level, idx, block_address);
-			
+			kprintf("Level %d [%d]: Block descriptor: 0x%lx (mapped to 0x%lx)\n",
+				level, idx, (entry & TT_BLOCK_MASK), block_address);
+
 			continue;
 		}
 
 		/* Page */
 		if (type == TTE_TYPE_PAGE) {
 			vm_address_t page_address = (entry & TT_PAGE_MASK);
-			kprintf ("Level %d [%d]: Page Descriptor: 0x%llx\n",
+			kprintf ("Level %d [%d]: Page Descriptor: 0x%lx\n",
 				level, idx, page_address);
 
 			continue;
@@ -83,24 +71,16 @@ _vm_pagetable_walk (tt_table_t *table_base, int level, int padding)
 	}
 }
 
-
-/**
- * Name:	vm_pagetable_walk_ttbr1
- * Desc:	Walk the current TTBR1 pagetable.
-*/
 void vm_pagetable_walk_ttbr1 ()
 {
 	vm_address_t base;
 
-	base = (mmu_get_tt_base_alt () & TTBR_BADDR_MASK);
-	_vm_pagetable_walk ((tt_table_t *) base, 1, 0);
+	base = (ptokva (mmu_get_tt_base_alt () & TTBR_BADDR_MASK));
+	vm_log("walking pagetable at base: 0x%lx\n", base);
+	_vm_pagetable_walk((tt_table_t *) base, 1, 0);
 }
 
-/**
- * Name:	vm_pagetable_walk_ttrb0
- * Desc:	Walk the current TTBR0 pagetable.
-*/
-void vm_pagetable_walk_ttrb0 ()
+void vm_pagetable_walk_ttbr0 ()
 {
 	vm_address_t base;
 
@@ -108,10 +88,6 @@ void vm_pagetable_walk_ttrb0 ()
 	_vm_pagetable_walk ((tt_table_t *) base, 1, 0);
 }
 
-/**
- * Name:	vm_pagetable_walk
- * Desc:	Walk a specified pagetable.
-*/
 void vm_pagetable_walk (tt_table_t *table, int level)
 {
 	_vm_pagetable_walk (table, level, 0);

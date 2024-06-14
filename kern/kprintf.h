@@ -30,6 +30,10 @@
 #include <libkern/types.h>
 #include <tinylibc/stddef.h>
 
+void kprintf_init ();
+
+void kprintf_hexdump (char *mem, uint64_t base, uint64_t size);
+
 int kprintf (const char *fmt, ...);
 int vprintf (const char *fmt, va_list ap);
 

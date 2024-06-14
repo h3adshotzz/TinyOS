@@ -19,11 +19,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-/**
- * 	Name:	panic.h
- * 	Desc:	Kernel panic handler.
-*/
-
 #include <libkern/panic.h>
 
 #include <kern/defaults.h>
@@ -33,46 +28,30 @@
 
 #include <tinylibc/stddef.h>
 
-/**
- * Name:	panic
- * Desc:	Panic the Kernel on the current thread.
-*/
-void
-panic (const char *fmt, ...)
+void panic (const char *fmt, ...)
 {
-	cpu_t		cpu = CPU_GET_CURRENT ();
-	va_list		args;
+	va_list args;
+	cpu_t cpu;
+	int pid;
+
+	/* get the current cpu */
+	cpu = cpu_get_id (0);	// cpu_get_current();
+	pid = 0;
 
 	kprintf ("\n---- Kernel Panic ----\n");
-	kprintf ("CPU: %d, PID: %d: ", cpu.cpu_num, 0);
+	kprintf ("CPU: %d, PID: %d: ", cpu.cpu_num, pid);
 
 	va_start (args, fmt);
 	vprintf (fmt, args);
 	va_end (args);
 
-	kprintf ("\n\nTinyOS Version:\n%s\n\n", KERNEL_BUILD_VERSION);
+	kprintf ("\n\ntinyOS Version:\n%s\n\n", KERNEL_BUILD_VERSION);
 	kprintf ("Kernel Version:\ntinyOS Kernel Version %s; %s; %s:%s/%s_%s\n\n",
 		KERNEL_BUILD_VERSION, __TIMESTAMP__,
 		DEFAULTS_KERNEL_BUILD_MACHINE,
 		KERNEL_SOURCE_VERSION, KERNEL_BUILD_STYLE, KERNEL_BUILD_TARGET);
 	kprintf ("---- End Panic ----\n");
 
-	/** TODO: Once tasks are implemented, change this to task_kill rather than
-	 * an entire system abort
-	 */
+	/* TODO: change this to task_kill, rather than cpu_halt() */
 	cpu_halt ();
-}
-
-
-void panic_print (const char *func, const char *fmt, ...)
-{
-	va_list ap;
-
-    kprintf ("--- Kernel Panic ---\n");
-
-	kprintf ("KERNEL PANIC - %s:", func);
-
-	va_start (ap, fmt);
-	vprintf (fmt, ap);
-	va_end (ap);
 }

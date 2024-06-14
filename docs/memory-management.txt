@@ -1,0 +1,190 @@
+tinyOS Kernel Memory Management
+===============================
+
+DRAFT v0.1
+
+Introduction
+------------
+
+The purpose of this document is to give an overview of both the configuration of
+architecture components like the MMU and the OS-level virtual memory subsystem
+built on-top. We'll start out by covering the configuration of the MMU, and then
+look at the four layers the kenrel has built on-top:
+ * bootstrap mappings
+ * physical memory maps
+ * vm pages
+ * vm maps
+
+MMU Configuration
+-----------------
+
+The VMSAv8-A specification details the AArch64 memory model. There are numerous
+ways to configure this based on the type of system the Operating System is meant
+to run on. In our case, we don't need large amounts of physical or virtual 
+address space, as tinyOS is likely to only run on virtualised hardware for non-
+practical purposes.
+
+With that in mind, the MMU is configured as follows:
+
+ * We use a 4KB granule size. There's not much benefit in going to 16KB as the
+   base test configuration for tinyOS, tiny-ex1, has 512MB of memory. Meaning
+   we would have 128,000 granules.
+ * We use a 36-bit physical address size. The next-smallest option is 30-bit's
+   which would only allow for 4GB of memory, for 40-bit's, which provides 1TB.
+   Using 36-bit's allows us up-to 64GB.
+ * We use a 39-bit virtual address size. The virtual address size is slightly
+   larger than the physical address, so we can map peripherals.
+
+Regarding the virtual address size, this is used to determine the level at which
+translation tables are accessed. Each translation table level can address the
+following amount of memory:
+
+ * L0 table: 512GB per entry
+ * L1 table: Table covers 512GB, 1GB per Entry
+ * L2 table: Table covers 1GB, 2MB per Entry
+ * L3 table: Table covers 2MB, 4KB per Entry
+
+In the case of 39-bit addresses, 39-bit's can cover 512GB, therefore there is no
+need to have L0 tables, so the MMU starts translations at L1. The virtual address
+size is determined by setting the TnSZ bit of TCR_EL1, where the number of bits
+is calculated as (64 - TnSZ). For 39-bit's, the TnSZ value is set to 0x19.
+
+
+Bootstrap Mappings
+------------------
+
+The Bootstrap Mappings are the term used to describe the two initial memory maps
+created when the kernel first boots. There are two mappings created: V=P and KVA.
+
+The V=P, or 1:1 physical mapping, directly maps physical addresses to virtual
+addresses. This means that memory accesses with physical addresses are possible,
+and is important because when the kernel first enters we don't have virtual
+memory configured yet.
+
+The KVA, or Kernel Virtual Address mapping, maps the physical base of the kernel
+to the virtual base address defined in `kern/defaults.h`. This is temporary and
+is replaced once the virtual memory system is configured, and just allows us to
+jump to kernel C code using full kernel virtual addresses.
+
+For the bootstrap mappings only two levels of translation are used. Level 1 is
+mandatory, as we're using 39-bit virtual addresses, but because Level 1 can
+address 1GB in a single entry, there is only one entry into this table. Level 2
+can address 2MB with each entry, but even this is more than the size of the
+kernel on it's own, so at most two entries are created in the L2 table.
+
+Instead of using a third table, the bootstrap phase creates Block Entries rather
+than a table desciptor pointing to a Level 3 table full of 4KB Page Entries. The
+bootstrap tables are only used for a short time until the kernel can call 
+vm_configure, so it's not worth creating three levels of tables.
+
+Additionally, the bootstrap tables have no attributes or permissions, and the 
+peripherals region is not mapped yet, so there is no UART available until after
+arm_vm_init(). Eventually, the call arm_vm_init() will clear these tables from
+memory, so physical addressing is no longer possible.
+
+
+Physical Maps
+-------------
+
+Physical Maps, or pmap, is the kernel interface responsible for managing the MMU
+and the translation tables. A `pmap_t` structure is created for each process and
+stores the pointer to the process's translation table, the bounds for virtual
+memory allocation (minimum and maximum virtual addresses) and ASID. Additional
+properties may be added later.
+
+These pmap's are created for each process, including the kernel process. When
+the kernel schedular switches between processes, it'll restore the translation
+table specified within the pmap. 
+
+The pmap interface also provides an API for interating with the MMU, like reading
+and writing to the Translation Table Base Registers (TTBRn_EL1), translating
+physical-to-virtual, and virtual-to-physical addresses, a range of types for
+tables and physical addresses, as well as pointers to the kernel pagetables.
+
+Pagetables are all stored in a region of memory called the "Pagetables Region",
+which is managed by the pmap interface. When new tables need to be created, it
+calls into the pmap API to allocate a new page within this region.
+
+ * Note, this may not be the permenant solution. There are obvious issues with
+   trying to keep all the pagestables for all the processes within the same area
+   of memory. 
+
+
+VM Pages
+--------
+
+The Page Allocator, or VM Pages Interface, is responsible for managing the state
+of all physical memory pages on the system. During vm_configure a `vm_page_t` is
+created for every single physical memory page, with these structured as a doubly
+linked list, each page pointer to the one before, and after, itself.
+
+The page structure contains the physical address of the page it represents, the
+two pointers for the doubly-linked list, the page index and a 32-bit flags value
+tracking the current page state. There are two state values:
+
+ * Allocation state, either VM_PAGE_STATE_ALLOC, or VM_PAGE_STATE_FREE
+ * Mapping state, either VM_PAGE_IS_MAPPED, or VM_PAGE_IS_NOT_MAPPED
+
+The page structures are written to the ".vm" section at the end fo teh kernel
+binary. This region is left blank, and is not given a size at compile time. The
+kernel will calculate how much space is needed in this section for the size of 
+physical memory, and reserve it.
+
+Page Allocation:
+
+    Pages can be allocated or deallocated. A page which is "allocated" means it
+    has been marked as VM_PAGE_STATE_ALLOC, and it's physical address has been
+    given out. This does not make it accessible immediately in virtual memory.
+
+    A page can be deallocated, meaning the kernel assumes it's no longer used,
+    and therefore safe to give the physical address out at a future alloc
+    request.
+
+    NOTE:   1) Consider whether pages should be zero'd when they're deallocated.
+            2) Can a deallocated page be mapped?
+            3) During an allocation, pages are selected in one of two ways:
+               a) The first unallocated page the allocator comes across
+               b) A number of pages adjecent to eachother.
+
+Page Mapping:
+
+    Pages can be mapped or unmapped. A page which is "mapped" means it has an 
+    entry within a translation table, an "unmapped" page does not. Accesses to
+    a memory page which is unmapped should caused a translation exception.
+
+    Mapping of pages is the responsibility of whatever is allocating the page in
+    the first place, i.e. vm_map_alloc. 
+
+    NOTE:   1) Add a reference counter to the pages, so the kernel can track 
+               how many times a page has been mapped.
+
+
+VM Maps
+-------
+
+A Virtual Map, or vm_map, represents the virtual memory space of a process, with
+each process structure pointing to a single vm_map. Maps are, in turn, made up
+of vm_map_entry structs. Virtual maps aren't contiguous, a process can have a
+virtual memory space which is quite fragmented. The only conditions is that
+kernel and userspace have to be kept seperate.
+
+This means that userspace virtual addresses can range from 0x00000000 up to a
+particular point, and kernel addresses start from 0xfffffff000000000.
+
+A vm_map structure contains a timestamp of when it was created, the pointer to
+the pmap_t structure (this is the only place that is stored for a process), the
+minimum and maximum allowed virtual address for that process, the total mapped
+size, some flags and the number of entries.
+
+The vm_map_entry structure simply contains the base, size, and flags.
+
+    NOTE:   1) The vm_map structure should be placed either at the very start,
+               or very end, of a processes virtual address space (probably the
+               end).
+            2) The mapping which covers this structure should have permissions
+               so that only privilleged code can view it, so the process cannot
+               modify it's own memory map.
+            3) Entries are placed directly after the vm_map structure. Assuming
+               the vm_map_t is placed at the base of a physical page, this would
+               allow for around ~200 entries (assuming we use the last page in
+               the processes address space).

@@ -54,13 +54,13 @@ struct boot_device_tree
 #define ROOT_DEVICE_TREE_INIT		1
 
 /* Private boot device tree structure */
-PRIVATE_STATIC_DEFINE(struct boot_device_tree)	BootDeviceTree;
+static struct boot_device_tree		BootDeviceTree;
 
 
 /**
  * 
 */
-PRIVATE_STATIC_DEFINE_FUNC(DTInteger)
+static DTInteger
 node_offset_count_children (DTNodeOffset node_offset)
 {
 	DTNodeOffset cur;
@@ -68,7 +68,7 @@ node_offset_count_children (DTNodeOffset node_offset)
 
 	count = 0;
 
-	cur = fdt_first_subnode (BootDeviceTree.base, node_offset);
+	cur = fdt_first_subnode ((const void *) BootDeviceTree.base, node_offset);
 	while (cur >= 0) {
 		count += 1;
 		cur = fdt_next_subnode (BootDeviceTree.base, cur);
@@ -79,7 +79,7 @@ node_offset_count_children (DTNodeOffset node_offset)
 /**
  * 
 */
-PRIVATE_STATIC_DEFINE_FUNC(DTInteger)
+static DTInteger
 node_offset_count_properties (DTNodeOffset node_offset)
 {
 	DTNodeOffset cur;
@@ -87,25 +87,13 @@ node_offset_count_properties (DTNodeOffset node_offset)
 
 	count = 0;
 
-	cur = fdt_first_property_offset (BootDeviceTree.base, node_offset);
+	cur = fdt_first_property_offset ((const void *) BootDeviceTree.base, node_offset);
 	while (cur >= 0) {
 		count += 1;
 		cur = fdt_next_property_offset (BootDeviceTree.base, cur);
 	}
 	return count;
 }
-
-/******************************************************************************/
-#if DEFAULTS_KERNEL_KDEBUG_MODE
-
-KERNEL_DEBUG_DEFINE(uint64_t)
-Debug_DeviceTreeGetBootDeviceTreeBase ()
-{
-	return BootDeviceTree.base;
-}
-
-#endif
-/******************************************************************************/
 
 const DTNode *
 BootDeviceTreeGetRootNode ()
@@ -124,7 +112,7 @@ DeviceTreeInit (void *base, size_t size)
 	BootDeviceTree.base = base;
 	BootDeviceTree.size = size;
 
-	res = fdt_check_header ((void *) BootDeviceTree.base);
+	res = fdt_check_header ((const void *) BootDeviceTree.base);
 	if (res) {
 		kprintf ("DeviceTreeInit: ERROR: failed to read device tree: 0x%llx\n", res);
 		return kDeviceTreeFailure;
@@ -141,9 +129,25 @@ DeviceTreeInit (void *base, size_t size)
 }
 
 DTInteger
+DeviceTreeVerify ()
+{
+	int res;
+
+	kprintf_hexdump (BootDeviceTree.base, BootDeviceTree.base, 128);
+	
+	if (BootDeviceTree.initialised != ROOT_DEVICE_TREE_INIT) {
+		kprintf ("DeviceTreeVerify: ERROR: BootDeviceTree is not properly initialised, base '0x%lx'\n", BootDeviceTree.base);
+		return kDeviceTreeFailure;
+	}
+
+	kprintf ("DeviceTreeVerify: BootDeviceTree is verified\n");
+	return kDeviceTreeSuccess;
+}
+
+DTInteger
 DeviceTreeNodeExists (const char *name)
 {
-	return (fdt_path_offset (BootDeviceTree.base, name) < 0) ? 
+	return (fdt_path_offset ((const void *) BootDeviceTree.base, name) < 0) ? 
 		kDeviceTreeFailure : kDeviceTreeSuccess;
 }
 
@@ -153,19 +157,20 @@ DeviceTreeLookupNode (const char *lookup, DTNode *node)
 	int res, len;
 	const char *name;
 
-	res = fdt_path_offset (BootDeviceTree.base, lookup);
+	res = fdt_path_offset ((const void *) BootDeviceTree.base, lookup);
 	if (res < 0) {
-		kprintf ("DeviceTreeLookupNode: ERROR: failed to find node '%s': 0x%llx\n",
-			lookup, res);
+		kprintf ("DeviceTreeLookupNode: ERROR: failed to find node '%s': %d\n",
+			lookup, -res);
 		return kDeviceTreeFailure;
 	}
-
-	name = fdt_get_name (BootDeviceTree.base, res, &len);
+	
+	name = fdt_get_name ((const void *) BootDeviceTree.base, res, &len);
 	if (len < 0) {
 		kprintf ("DeviceTreeLookupNode: ERROR: failed to verify name of node: '%s': %d\n",
 			lookup, len);
 		return kDeviceTreeFailure;
 	}
+
 	if (len > kPropNameLength) {
 		kprintf ("DeviceTreeLookupNode: WARNING: node name '%d' longer than max: %d, %d\n",
 			name, len, kPropNameLength);
@@ -187,7 +192,7 @@ DeviceTreeLookupNodeByOffset (DTNodeOffset offset, DTNode *node)
 	const char *name;
 	node->offset = offset;
 
-	name = fdt_get_name (BootDeviceTree.base, offset, &len);
+	name = fdt_get_name ((const void *) BootDeviceTree.base, offset, &len);
 	if (len < 0) {
 		kprintf ("DeviceTreeLookupNodeByOffset: ERROR: failed to find name for node offset: %d: %d\n",
 			offset, len);
@@ -206,7 +211,7 @@ DeviceTreeNodeFirstSubnode (DTNode node, DTNode *first)
 {
 	int res;
 
-	res = fdt_first_subnode (BootDeviceTree.base, node.offset);
+	res = fdt_first_subnode ((const void *) BootDeviceTree.base, node.offset);
 	if (res == -FDT_ERR_NOTFOUND) {
 		kprintf ("DeviceTreeNodeFirstSubnode: ERROR: failed to find subnode for node '%s'\n",
 			node.name);
@@ -221,7 +226,7 @@ DeviceTreeNodeNextSubnode (DTNode node, DTNode *next)
 {
 	int res;
 
-	res = fdt_next_subnode (BootDeviceTree.base, node.offset);
+	res = fdt_next_subnode ((const void *) BootDeviceTree.base, node.offset);
 	if (res == -FDT_ERR_NOTFOUND) {
 		kprintf ("DeviceTreeNodeFirstSubnode: ERROR: failed to find subnode for node '%s'\n",
 			node.name);
@@ -275,7 +280,7 @@ DeviceTreeLookupPropertyValue (DTNode node, const char *propName, char **propVal
 	int len;
 	const char *value;
 
-	value = fdt_getprop (BootDeviceTree.base, node.offset, propName, &len);
+	value = fdt_getprop ((const void *) BootDeviceTree.base, node.offset, propName, &len);
 	if (len < 0) {
 		kprintf ("DeviceTreeLookupProperty: ERROR: failed to find prop '%s' in node '%s': %d\n",
 			propName, node.name, len);
@@ -293,7 +298,7 @@ DeviceTreeLookupNodeByPhandle (uint64_t phandle, DTNode *node)
 	int res, len;
 	const char *name;
 
-	res = fdt_node_offset_by_phandle (BootDeviceTree.base, phandle);
+	res = fdt_node_offset_by_phandle ((const void *) BootDeviceTree.base, phandle);
 	if (res < 0) {
 		kprintf ("DeviceTreeLookupNodeByPhandle: ERROR: failed to find node with phandle '0x%x': 0x%llx\n",
 			phandle, res);
@@ -315,7 +320,7 @@ DeviceTreeLookupReg (DTNode *node, uint32_t *reg)
 {
 	int res, cell_size;
 
-	reg = fdt_getprop (BootDeviceTree.base, node->offset, "reg", &res);
+	reg = fdt_getprop ((const void *) BootDeviceTree.base, node->offset, "reg", &res);
 	if (res < 0) {
 		kprintf ("DeviceTreeLookupReg: ERROR: failed to get prop 'reg' from node '%s': 0x%llx\n",
 			node->name, res);
@@ -331,7 +336,7 @@ DeviceTreeLookupRegValue (DTNode *node, uint64_t *addr, uint64_t *size)
 	int res, cell_size;
 	uint32_t *reg, *cells;
 
-	reg = fdt_getprop (BootDeviceTree.base, node->offset, "reg", &res);
+	reg = fdt_getprop ((const void *) BootDeviceTree.base, node->offset, "reg", &res);
 	if (res < 0) {
 		kprintf ("DeviceTreeLookupRegValue: ERROR: failed to get prop 'reg' from node '%s': 0x%llx\n",
 			node->name, res);
@@ -342,10 +347,10 @@ DeviceTreeLookupRegValue (DTNode *node, uint64_t *addr, uint64_t *size)
 	 * The cell size is fixed and defined in defaults.h. For now, until this is
 	 * changed, there is no need to discover the cell size.
 	*/
-	cell_size = DEFAULTS_DEVICETREE_CELL_SIZE;
+	cell_size = DEFAULTS_PLAT_DEVICETREE_CELL_SIZE;
 	cells = &reg[0];
 
-	for (int i = 0; i < DEFAULTS_DEVICETREE_CELL_SIZE * 2; i++)
+	for (int i = 0; i < cell_size * 2; i++)
 		cells[i] = bswap_32 (cells[i]);
 
 	/**
@@ -355,3 +360,4 @@ DeviceTreeLookupRegValue (DTNode *node, uint64_t *addr, uint64_t *size)
 	*addr = ((uint64_t) cells[0] << 32) + cells[1];
 	*size = ((uint64_t) cells[2] << 32) + cells[3];
 }
+

@@ -32,7 +32,7 @@ memcpy (void *dest, const void *src, size_t count)
         return dest;
 
     /* while all data is aligned (common case), copy a word at a time */
-    if ( (((uint32_t) dest | (uint32_t) src) & (sizeof (*dl) - 1)) == 0) {
+    if ( (((uint64_t) dest | (uint64_t) src) & (sizeof (*dl) - 1)) == 0) {
         while (count >= sizeof (*dl)) {
             *dl++ = *sl++;
             count -= sizeof (*dl);

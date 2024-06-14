@@ -20,57 +20,40 @@
 //===----------------------------------------------------------------------===//
 
 /**
- * 	Name:	vm.h
- * 	Desc:	Primary Kernel Virtual Memory interface header.
+ *	Name:	vm.h
+ *	Desc:	Kernel Virtual Memory interface.
  */
 
 #ifndef __KERN_VM_H__
 #define __KERN_VM_H__
 
 #include <tinylibc/stdint.h>
-#include <arch/proc_reg.h>
-
-#include <libkern/assert.h>
+#include <kern/vm/vm_types.h>
 #include <libkern/boot.h>
 
-/* interface logger */
-#define vm_log(fmt, ...)		interface_log ("vm", fmt, ##__VA_ARGS__)
-
-/* Virtual Memory types */
-typedef uint64_t		vm_address_t;		/* Virtual memory address */
-typedef uint64_t		vm_offset_t;		/* Virtual memory offset */
-typedef uint64_t		vm_size_t;			/* Virtual memory size */
-
-typedef int				vm_map_type_t;		/* Virtual memory region type */
-typedef int				vm_prot_t;			/* Protection properties */
+/* Interface logger */
+#define vm_log(fmt, ...)			interface_log("vm", fmt, ##__VA_ARGS__)
 
 /* Kernel virtual memory area bounds */
 #define VM_KERNEL_MIN_ADDRESS		((vm_address_t) 0xffffffe000000000ULL)
 #define VM_KERNEL_MAX_ADDRESS		((vm_address_t) 0xfffffff3ffffffffULL)
 
-/* Protection types */
+/* Memory protection types */
 #define VM_PROT_NONE				((vm_prot_t) 0x0)
 #define VM_PROT_READ				((vm_prot_t) 0x1)
 #define VM_PROT_WRITE				((vm_prot_t) 0x2)
 #define VM_PROT_EXECUTE				((vm_prot_t) 0x3)
 
-/* Mapping types */
+/* Memory mapping types */
 #define VM_MAP_TYPE_INVALID			((vm_map_type_t) 0x0)
-#define VM_MAP_TYPE_KERNEL			((vm_map_type_t) 0x1)
+#define VM_MAP_TYPE_KERNEL			((vm_map_tyoe_t) 0x1)
 #define VM_MAP_TYPE_DEVICE			((vm_map_type_t) 0x2)
 #define VM_MAP_TYPE_USER			((vm_map_type_t) 0x3)
 
-/**
- * Virtual Memory Map structure
- * 
- * ...
-*/
-typedef struct vm_map {
+/* Virtual memory system init */
+extern void arm_vm_init		(struct boot_args *args,
+							vm_address_t membase, vm_address_t memsize);
 
-} vm_map_t;
-
-
-/* Virtual memory system initialisation */
-extern void arm_vm_init (struct boot_args *args, vm_address_t membase, vm_size_t memsize);
+extern void vm_configure	(void);
 
 #endif /* __kern_vm_h__ */

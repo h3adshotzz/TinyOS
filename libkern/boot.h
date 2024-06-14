@@ -67,6 +67,4 @@ struct boot_args
     char        tboot_vers[32];
 };
 
-
-
 #endif /* __KERN_BOOT_H__ */

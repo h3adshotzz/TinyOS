@@ -46,14 +46,13 @@ enum {
 /**
  * Structures for Flattened Device Tree
 */
-
 typedef struct DeviceTreeNode
 {
 	char			name[kPropNameLength];
 	DTNodeOffset	offset;
 	DTInteger		nChildren;
 	DTInteger		nProperties;
-} DeviceTreeNode, DTNode;
+} DeviceTreeNode, DTNode, dtnode;
 
 typedef struct DeviceTreeIterator
 {
@@ -61,7 +60,7 @@ typedef struct DeviceTreeIterator
 	DeviceTreeNode	currentNode;
 	DTInteger		index;
 	DTInteger		count;
-} DeviceTreeIterator;
+} DeviceTreeIterator, devicetree_iterator_t;
 
 
 /*******************************************************************************
@@ -82,6 +81,18 @@ typedef struct DeviceTreeIterator
 */
 extern DTInteger
 DeviceTreeInit (void *base, size_t size);
+
+
+/**
+ * DeviceTreeVerify
+ * 
+ * Verify that the boot device tree setup by DeviceTreeInit has been properly
+ * initialised.
+ * 
+ * @returns		kDeviceTreeSuccess or kDeviceTreeFailure.
+*/
+extern DTInteger
+DeviceTreeVerify ();
 
 
 /*******************************************************************************
@@ -143,6 +154,18 @@ DeviceTreeNodeFirstSubnode (DTNode node, DTNode *first);
 extern DTInteger
 DeviceTreeNodeNextSubnode (DTNode node, DTNode *next);
 
+/**
+ * DeviceTreeLookupNodeByPhandle
+ * 
+ * Lookup a node within the device tree by it's phandle, and place it in `node`.
+ * 
+ * @param	phandle		Phandle of the node
+ * @param	node		Pointer to store the node in, if found
+ * 
+ * @returns		kDeviceTreeSuccess or kDeviceTreeFailure
+*/
+extern DTInteger
+DeviceTreeLookupNodeByPhandle (uint64_t phandle, DTNode *node);
 
 /*******************************************************************************
  *  Device Tree Node Property Lookup

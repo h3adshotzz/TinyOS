@@ -20,24 +20,34 @@
 //===----------------------------------------------------------------------===//
 
 /**
- * 	Name:	cpu.h
- * 	Desc:	Kernel CPU interface.
+ *	Name:	cpu.c
+ *	Desc:	Kernel CPU management interface. Handles interactions with physical
+ *			CPUs, enable/disable, wakeup and other operations.
  */
 
 #include <kern/defaults.h>
-#include <kern/startup.h>
-#include <kern/cpu.h>
-
+#include <kern/machine.h>
 #include <kern/vm/pmap.h>
 
-KERNEL_GLOBAL_DEFINE(cpu_t)			CpuDataEntries[DEFAULTS_KERNEL_MAX_CPUS];
+/**
+ * List of active CPUs. This array is allocated to the maximum number of allowed
+ * CPUs (DEFAULTS_MACHINE_MAX_CPUS), and is updated as each CPU becomes active.
+ */
+static cpu_t	CpuDataEntries[DEFAULTS_MACHINE_MAX_CPUS];
+static cpu_t	BootCpuData;
 
-/* Boot CPU */
-PRIVATE_STATIC_DEFINE(cpu_t)		BootCpuData;
 
+cpu_t cpu_get_current()
+{
+	return (cpu_t) CpuDataEntries[machine_get_cpu_num()];
+}
 
-kern_return_t
-cpu_data_init (cpu_t *cpu_data_ptr)
+cpu_t cpu_get_id (unsigned int id)
+{
+	return (cpu_t) CpuDataEntries[id];
+}
+
+kern_return_t cpu_data_init (cpu_t *cpu_data_ptr)
 {
 	cpu_data_ptr->cpu_num = 0;
 	cpu_data_ptr->cpu_flags = 0;
@@ -48,42 +58,33 @@ cpu_data_init (cpu_t *cpu_data_ptr)
 	return KERN_RETURN_SUCCESS;
 }
 
-kern_return_t
-cpu_data_register (cpu_t *cpu_data_ptr)
+kern_return_t cpu_data_register (cpu_t *cpu_data_ptr)
 {
-	int cpu_num = cpu_data_ptr->cpu_num;
+	int cpu_num;
 
+	cpu_num = cpu_data_ptr->cpu_num;
 	CpuDataEntries[cpu_num] = *cpu_data_ptr;
+
 	return KERN_RETURN_SUCCESS;
 }
 
-kern_return_t
-cpu_set_boot_cpu (cpu_t *cpu_data_ptr)
+kern_return_t cpu_set_boot_cpu (cpu_t *cpu_data_ptr)
 {
 	BootCpuData = *(cpu_t *) cpu_data_ptr;
 	return KERN_RETURN_SUCCESS;
 }
 
-kern_return_t
-cpu_init (void)
+kern_return_t cpu_init (void)
 {
 	cpu_t cpu_data;
 
-	cpu_data = CPU_GET_CURRENT ();
-
-//	if (cpu_data.cpu_num == BootCpuData.cpu_num)
-//		kprintf ("boot cpu\n");
-
-	cpu_data.cpu_reset_handler = (vm_address_t) mmu_translate_kvtop (&_LowResetVector);
-//	kprintf ("cpu.cpu_reset_handler: 0x%llx\n", cpu_data.cpu_reset_handler);
-
-	// TODO: CPU Feature info
-	//
+	cpu_data.cpu_reset_handler = (vm_address_t) 
+		mmu_translate_kvtop ((vm_address_t) &_LowResetVector);
+	return KERN_RETURN_SUCCESS;
 }
 
-kern_return_t
-cpu_halt (void)
+void cpu_halt (void)
 {
 	/* put the core to sleep */
-	__asm__ __volatile__ ("b .");
+	__asm__ volatile ("b .");
 }

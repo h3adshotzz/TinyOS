@@ -21,7 +21,7 @@
 
 /**
  * Name:	exception.c
- * Desc:	AArch64 Exception Handlers.
+ * Desc:	Kernel Exception Handlers.
 */
 
 #include <tinylibc/stdint.h>
@@ -30,17 +30,16 @@
 
 #include <kern/defaults.h>
 #include <kern/kprintf.h>
-#include <kern/version.h>
 #include <kern/vm/vm.h>
 #include <arch/arch.h>
 #include <kern/cpu.h>
 
 #include <libkern/panic.h>
+#include <libkern/version.h>
 
-/* Additional declaration wrappers */
-#define KERNEL_FAULT_HANDLER(_t)	static _t
-#define KERNEL_ABORT_HANDLER(_t)	static _t
-#define MISC_HELPER(_t)				static inline _t
+/* kernel handler annotations */
+#define __KERNEL_FAULT_HANDLER
+#define __KERNEL_ABORT_HANDLER
 
 /* Types that will only be used here */
 typedef vm_address_t	fault_address_t;
@@ -49,16 +48,16 @@ typedef int				fault_type_t;
 /**
  * AArch64 First-stage Exception Handlers
 */
-KERNEL_GLOBAL_DEFINE(void)		arm64_handler_synchronous (arm64_exception_frame_t *);
-KERNEL_GLOBAL_DEFINE(void)		arm64_handler_serror (arm64_exception_frame_t *);
-KERNEL_GLOBAL_DEFINE(void)		arm64_handler_fiq (arm64_exception_frame_t *);
-KERNEL_GLOBAL_DEFINE(void)		arm64_handler_irq (arm64_exception_frame_t *);
+void arm64_handler_synchronous (arm64_exception_frame_t *);
+void arm64_handler_serror (arm64_exception_frame_t *);
+void arm64_handler_fiq (arm64_exception_frame_t *);
+void arm64_handler_irq (arm64_exception_frame_t *);
 
 /**
  * Second-stage Exception Handlers
 */
-PRIVATE_STATIC_DEFINE(void)		handle_breakpoint (arm64_exception_frame_t *);
-PRIVATE_STATIC_DEFINE(void)		handle_svc (arm64_exception_frame_t *);
+static void handle_breakpoint (arm64_exception_frame_t *);
+static void handle_svc (arm64_exception_frame_t *);
 
 /**
  * The Abort inspector determines the type of Abort that has occured, and the
@@ -69,41 +68,39 @@ typedef void (*abort_inspector_t)	(fault_status_t *, fault_type_t *, uint32_t);
 typedef void (*abort_handler_t)		(arm64_exception_frame_t *, fault_status_t, fault_status_t);
 
 /* Abort Inspectors */
-PRIVATE_STATIC_DEFINE(void)		inspect_data_abort (fault_status_t *, fault_type_t *, uint32_t);
-PRIVATE_STATIC_DEFINE(void)		inspect_instruction_abort (fault_status_t *, fault_type_t *, uint32_t);
+static void inspect_data_abort (fault_status_t *, fault_type_t *, uint32_t);
+static void inspect_instruction_abort (fault_status_t *, fault_type_t *, uint32_t);
 
 /* Abort type handlers */
-PRIVATE_STATIC_DEFINE(void)		handle_data_abort (arm64_exception_frame_t *, fault_address_t, fault_status_t);
-PRIVATE_STATIC_DEFINE(void)		handle_instruction_abort (arm64_exception_frame_t *, fault_address_t, fault_status_t);
-PRIVATE_STATIC_DEFINE(void)		handle_prefetch_abort (arm64_exception_frame_t *, fault_address_t, fault_status_t);
-PRIVATE_STATIC_DEFINE(void)		handle_msr_trap (arm64_exception_frame_t *);
+static void handle_data_abort (arm64_exception_frame_t *, fault_address_t, fault_status_t);
+static void handle_instruction_abort (arm64_exception_frame_t *, fault_address_t, fault_status_t);
+static void handle_prefetch_abort (arm64_exception_frame_t *, fault_address_t, fault_status_t);
+static void handle_msr_trap (arm64_exception_frame_t *);
 
 /* General Abort handler */
-PRIVATE_STATIC_DEFINE(void)		handle_abort (arm64_exception_frame_t *, abort_handler_t, abort_inspector_t);
+static void handle_abort (arm64_exception_frame_t *, abort_handler_t, abort_inspector_t);
 
 /**
  * Panic message
 */
-PRIVATE_STATIC_DEFINE(void)		panic_with_thread_state (arm64_exception_frame_t *, vm_address_t, const char *, ...);
-//PRIVATE_STATIC_DEFINE(void)		panic (vm_address_t, const char *, ...);
+static void panic_with_thread_state (arm64_exception_frame_t *, vm_address_t, const char *, ...);
 
 /**
  * Misc Helper Functions
 */
-MISC_HELPER(int)				is_translation_vault (fault_status_t);
-MISC_HELPER(int)				is_permission_vault (fault_status_t);
-MISC_HELPER(int)				is_alignment_vault (fault_status_t);
-MISC_HELPER(int)				is_vm_vault (fault_status_t);
+static inline int is_translation_vault (fault_status_t);
+static inline int is_permission_vault (fault_status_t);
+static inline int is_alignment_vault (fault_status_t);
+static inline int is_vm_vault (fault_status_t);
 
-MISC_HELPER(int)				vm_fault_get_level (fault_status_t);
+static inline int vm_fault_get_level (fault_status_t);
 
 
 /*******************************************************************************
  * Misc Helper Functions
 *******************************************************************************/
 
-MISC_HELPER(int)
-is_vm_fault (fault_status_t status)
+static inline int is_vm_fault (fault_status_t status)
 {
 	switch (status) {
 		case FSC_TRANSLATION_FAULT_L0:
@@ -122,8 +119,7 @@ is_vm_fault (fault_status_t status)
 	}
 }
 
-MISC_HELPER(int)
-is_translation_fault (fault_status_t status)
+static inline int is_translation_fault (fault_status_t status)
 {
 	switch (status) {
 		case FSC_TRANSLATION_FAULT_L0:
@@ -136,8 +132,7 @@ is_translation_fault (fault_status_t status)
 	}
 }
 
-MISC_HELPER(int)
-is_permission_fault (fault_status_t status)
+static inline int is_permission_fault (fault_status_t status)
 {
 	switch (status) {
 		case FSC_PERMISSION_FAULT_L1:
@@ -149,8 +144,7 @@ is_permission_fault (fault_status_t status)
 	}
 }
 
-MISC_HELPER(int)
-is_alignment_fault (fault_status_t status)
+static inline int is_alignment_fault (fault_status_t status)
 {
 	return (FSC_ALIGNMENT_FAULT == status);
 }
@@ -161,8 +155,7 @@ is_alignment_fault (fault_status_t status)
  * Desc:	Return the Translation Level the given fault occured at, or -1 if
  * 			the given fault_status_t is not a Translation fault.
 */
-MISC_HELPER(int)
-vm_fault_get_level (fault_status_t status)
+static inline int vm_fault_get_level (fault_status_t status)
 {
 	switch (status) {
 		/* Level 0 */
@@ -206,8 +199,8 @@ vm_fault_get_level (fault_status_t status)
  * 			ISS value to determine the fault_code and fault_status, to determine
  * 			whether the abort was on a read or a write.
 */
-PRIVATE_STATIC_DEFINE(void)
-inspect_data_abort (fault_status_t *fault_code, fault_type_t *fault_type, uint32_t iss)
+static void inspect_data_abort (fault_status_t *fault_code, 
+		fault_type_t *fault_type, uint32_t iss)
 {
 	*fault_code = ISS_DA_FSC(iss);
 
@@ -237,8 +230,9 @@ inspect_data_abort (fault_status_t *fault_code, fault_type_t *fault_type, uint32
  * 
 */
 
-KERNEL_ABORT_HANDLER(void)
-handle_data_abort (arm64_exception_frame_t *frame, fault_address_t fault_address, fault_status_t fault_status)
+__KERNEL_ABORT_HANDLER
+void handle_data_abort (arm64_exception_frame_t *frame, 
+		fault_address_t fault_address, fault_status_t fault_status)
 {
 
 	/**
@@ -283,16 +277,15 @@ handle_data_abort (arm64_exception_frame_t *frame, fault_address_t fault_address
  * 			can be called with a single message.
 */
 
-PRIVATE_STATIC_DEFINE(void)
-_print_panic_header (cpu_number_t cpu, uint32_t pid, vm_address_t addr)
+static void _print_panic_header (cpu_number_t cpu, uint32_t pid, 
+		vm_address_t addr)
 {
 	kprintf ("\n---- KERNEL PANIC ----\n");
 	kprintf ("CPU: %d: PID: %d: Kernel Panic at 0x%016llx: ",
 		cpu, pid, addr);
 }
 
-PRIVATE_STATIC_DEFINE(void)
-_print_panic_os_info ()
+static void _print_panic_os_info ()
 {
 	/**
 	 * Output system information for future reference.
@@ -310,8 +303,7 @@ _print_panic_os_info ()
 	kprintf ("---- End Panic ----\n");
 }
 
-PRIVATE_STATIC_DEFINE(void)
-_print_cpu_register_state (arm64_exception_frame_t *frame)
+static void _print_cpu_register_state (arm64_exception_frame_t *frame)
 {
 	exception_level_t cur_el;
 
@@ -361,8 +353,7 @@ _print_cpu_register_state (arm64_exception_frame_t *frame)
 	kprintf ("  ESR_EL%d: 0x%016llx\n\n", cur_el, frame->esr);
 }
 
-PRIVATE_STATIC_DEFINE(void)
-_print_backtrace (cpu_number_t cpu_num)
+static void _print_backtrace (cpu_number_t cpu_num)
 {
 	/**
 	 * Output the CPU backtrace.
@@ -376,15 +367,14 @@ _print_backtrace (cpu_number_t cpu_num)
  * Desc:	Print the Kernel Panic with the CPU register state, including the
  * 			ESR and FAR registers.
 */
-PRIVATE_STATIC_DEFINE(void)
-panic_with_thread_state (arm64_exception_frame_t *frame, vm_address_t fault_address, const char *fmt, ...)
+static void panic_with_thread_state (arm64_exception_frame_t *frame, vm_address_t fault_address, const char *fmt, ...)
 {
 	exception_level_t	cur_el;
 	cpu_number_t		cpu_num;
 	cpu_t				fault_cpu;
 	va_list				args;
 
-	fault_cpu = CPU_GET_CURRENT ();
+	fault_cpu = cpu_get_current ();
 	cpu_num = fault_cpu.cpu_num;
 
 	_print_panic_header (cpu_num, 0, frame->pc);
@@ -402,14 +392,13 @@ panic_with_thread_state (arm64_exception_frame_t *frame, vm_address_t fault_addr
  * Name:	panic
  * Desc:	Print the Kernel Panic without the CPU register state.
 */
-PRIVATE_STATIC_DEFINE(void)
-panic2 (vm_address_t fault_address, const char *fmt, ...)
+static void panic2 (vm_address_t fault_address, const char *fmt, ...)
 {
 	exception_level_t	cur_el;
 	cpu_number_t		cpu_num;
 	cpu_t				fault_cpu;
 
-	fault_cpu = CPU_GET_CURRENT ();
+	fault_cpu = cpu_get_current ();
 	cpu_num = fault_cpu.cpu_num;
 
 	_print_panic_header (cpu_num, 0, fault_address);
@@ -426,8 +415,8 @@ panic2 (vm_address_t fault_address, const char *fmt, ...)
  * Name:	handle_breakpoint
  * Desc:	Handle a Breakpoint Exception.
 */
-KERNEL_FAULT_HANDLER(void)
-handle_breakpoint (arm64_exception_frame_t *frame)
+__KERNEL_FAULT_HANDLER
+void handle_breakpoint (arm64_exception_frame_t *frame)
 {
 	panic_with_thread_state (frame, frame->pc, "Breakpoint 64");
 }
@@ -436,18 +425,18 @@ handle_breakpoint (arm64_exception_frame_t *frame)
  * Name:	handle_svc
  * Desc:	Handle a Supervisor Call Exception.
 */
-KERNEL_FAULT_HANDLER(void)
-handle_svc (arm64_exception_frame_t *frame)
+__KERNEL_FAULT_HANDLER
+void handle_svc (arm64_exception_frame_t *frame)
 {
-	panic (frame->pc, "Supervisor Call (64)");
+	panic2 (frame->pc, "Supervisor Call (64)");
 }
 
 /**
  * Name:	handle_abort
  * Desc:	Handle an Abort exception (Data, Instruction, Prefetch)
 */
-KERNEL_FAULT_HANDLER(void)
-handle_abort (arm64_exception_frame_t *frame, abort_handler_t handler, abort_inspector_t inspect)
+__KERNEL_FAULT_HANDLER
+void handle_abort (arm64_exception_frame_t *frame, abort_handler_t handler, abort_inspector_t inspect)
 {
 	fault_address_t		fault_address;
 	fault_status_t		fault_code;
@@ -462,8 +451,8 @@ handle_abort (arm64_exception_frame_t *frame, abort_handler_t handler, abort_ins
  * Name:	handle_msr_trap
  * Desc:	Handle a trapped MSR, MRS or System instruction.
 */
-KERNEL_ABORT_HANDLER(void)
-handle_msr_trap (arm64_exception_frame_t *frame)
+__KERNEL_ABORT_HANDLER
+void handle_msr_trap (arm64_exception_frame_t *frame)
 {
 	panic2 (frame->pc, "Trapped MSR, MRS, or System instruction");
 }
@@ -472,8 +461,7 @@ handle_msr_trap (arm64_exception_frame_t *frame)
  * First-stage Exception Handling
 *******************************************************************************/
 
-void
-arm64_handler_synchronous (arm64_exception_frame_t *frame)
+void arm64_handler_synchronous (arm64_exception_frame_t *frame)
 {
 	esr_exception_class_t	class;
 	//thread_t				thread;
@@ -493,7 +481,7 @@ arm64_handler_synchronous (arm64_exception_frame_t *frame)
 		/* Data Abort (EL0 and EL1) */
 		case ESR_EC_DABORT_EL0:
 		case ESR_EC_DABORT_EL1:
-			handle_abort (frame, handle_data_abort, inspect_data_abort);
+			handle_abort (frame, (abort_handler_t) handle_data_abort, inspect_data_abort);
 			cpu_halt ();
 			break;
 
@@ -522,14 +510,12 @@ arm64_handler_synchronous (arm64_exception_frame_t *frame)
 	}
 }
 
-void
-arm64_handler_serror (arm64_exception_frame_t *frame)
+void arm64_handler_serror (arm64_exception_frame_t *frame)
 {
 	kprintf ("arm64_handler_serror\n");
 }
 
-void
-arm64_handler_fiq (arm64_exception_frame_t *frame)
+void arm64_handler_fiq (arm64_exception_frame_t *frame)
 {
 	uint32_t intid = arm64_read_icc_iar1_el1 ();
 	arm64_write_icc_eoir1_el1 (intid);
@@ -539,16 +525,15 @@ arm64_handler_fiq (arm64_exception_frame_t *frame)
 
 int irq_count = 0;
 
-void
-arm64_handler_irq (arm64_exception_frame_t *frame)
+void arm64_handler_irq (arm64_exception_frame_t *frame)
 {
 	uint32_t intid = arm64_read_icc_iar1_el1 ();
 	arm64_write_icc_eoir1_el1 (intid);
 
 	kprintf ("arm64_handler_irq(%d): intid: %d\n", irq_count, intid);
 
-	if (intid == 30)
-		arm64_timer_reset (0x5000000);
+//	if (intid == 30)
+//		arm64_timer_reset (0x5000000);
 
 	irq_count++;
 }

@@ -20,7 +20,7 @@
 //===----------------------------------------------------------------------===//
 
 /**
- * 	Name:	exception.S
+ * 	Name:	handler.S
  * 	Desc:	Kernel Exception Handlers.
  */
 
@@ -61,7 +61,6 @@
  * Exception Vector Table Page
  ******************************************************************************/
 
-	.section .text
 	.align 12
 	.globl _ExceptionVectorBase
 _ExceptionVectorBase:

@@ -35,6 +35,9 @@
 #include <tinylibc/limits.h>
 #include <tinylibc/stdint.h>
 
+#include <libkern/types.h>
+#include <kern/vm/vm_types.h>
+
 typedef uint32_t		intid_t;
 
 struct irq_data {
@@ -57,13 +60,13 @@ struct irq_interface {
 };
 
 /* GICv3-specific */
-kern_return_t
+kern_return_t 
 gic_interface_init (vm_address_t dist_base, vm_address_t redist_base);
 
+kern_return_t machine_init_interrupts ();
 
 //kern_return_t machine_configure_interrupts ();
 //kern_return_t machine_enable_interrupts ();
 //kern_return_t machine_disable_interrupts ();
-
 
 #endif /* __machine_irq_h__ */

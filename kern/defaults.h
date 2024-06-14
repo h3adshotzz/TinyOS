@@ -20,82 +20,56 @@
 //===----------------------------------------------------------------------===//
 
 /**
- * 	Name:	defaults.h
- * 	Desc:	Kernel default values, toggles and tunable values.
+ *	Name:	defaults.h
+ *	Desc:	Kernel default/tunnable values.
  */
 
 #ifndef __KERN_DEFAULTS_H__
 #define __KERN_DEFAULTS_H__
 
 #include <arch/proc_reg.h>
-
-#define KERNEL_STATIC_DEFINE(_t)    
-#define PRIVATE_STATIC_DEFINE(_t)		static _t
-#define PRIVATE_STATIC_DEFINE_FUNC(_t)	static _t
-
-#define KERNEL_GLOBAL_DEFINE(_t)		_t
-#define KERNEL_EXTERN_DEFINE(_t)		extern _t
-
-#define KERNEL_DEBUG_DEFINE(_t)			_t
-
-/**
- * Kernel Defaults will be stored in the .rodata.defaults section, 
- * when using an ELF as the resulting binary, and __DATA_CONST.__defaults
- * when using a Tiny-O file.
- * 
- * Use this when declaring global default variables.
-*/
-#define KERNEL_DEFAULTS_DEFINE(_t)		_t __attribute__((section(".rodata.defaults")))
+#include <libkern/compiler.h>
 
 
-/**
- * This is the list of Default definitions. All declarations must be written in
- * the style of "DEFAULTS_<NAME>".
-*/
+/* Enable/Disable values */
+#define DEFAULTS_ENABLE			UL(1)
+#define DEFAULTS_DISABLE		UL(0)
 
-/* Enabled / Disabled macros */
-#define DEFAULTS_ENABLE			(1)
-#define DEFAULTS_DISABLE		(0)
+#define DEFAULTS_SET(__X)		(__X == DEFAULTS_ENABLE)
 
-/* tBoot */
-#define DEFAULTS_TBOOT_TRANSLATE_PA			DEFAULTS_ENABLE
-
-/* Kernel */
-#define DEFAULTS_KERNEL_DAIF				0xf
-#define DEFAULTS_KERNEL_STACK_SIZE			16386
-#define DEFAULTS_KERNEL_USE_KVA				DEFAULTS_ENABLE
+/* Kernel - core */
 #define DEFAULTS_KERNEL_BUILD_MACHINE		"tempest"
+#define DEFAULTS_KERNEL_IMAGEINFO_HEADER	DEFAULTS_ENABLE
 
-#define DEFAULTS_KERNEL_MAX_CPUS			16
-#define DEFAULTS_KERNEL_MAX_CPU_CLUSTERS	4
+/* Kernel - memory */
+#define DEFAULTS_KERNEL_VM_STACK_SIZE		UL(16386)
+#define DEFAULTS_KERNEL_VM_PAGE_SIZE		TT_PAGE_SIZE
+#define DEFAULTS_KERNEL_VM_VIRT_BASE		UL(0xfffffff000000000)
+#define DEFAULTS_KERNEL_VM_PERIPH_BASE		UL(0xffffffff10000000)
 
-#define DEFAULTS_KERNEL_KDEBUG_MODE			DEFAULTS_ENABLE
+#define DEFAULTS_KERNEL_VM_USE_L3_TABLE		DEFAULTS_DISABLE
 
-#define DEFAULTS_KERNEL_KDEBUG_UART_BASE	0xfffffff001000000
-#define DEFAULTS_KERNEL_KDEBUG_UART_BAUD	115200
-#define DEFAULTS_KERNEL_KDEBUG_UART_CLCK	0x16e3600
-
-#define DEFAULTS_KENREL_VM_PAGE_SIZE		TT_PAGE_SIZE
-
-/* Boot Arguments (v1.1) */
-#define DEFAULTS_BA_OFFSET_VIRTBASE			8
-#define DEFAULTS_BA_OFFSET_PHYSBASE			16
-#define DEFAULTS_BA_OFFSET_MEMSIZE			24
+/* Kernel - debug */
+#define DEFAULTS_KERNEL_DEBUG_UART_BAUD		115200
+#define DEFAULTS_KERNEL_DEBUG_UART_CLK		0x16e3600
 
 /* Machine */
+#define DEFAULTS_MACHINE_MAX_CPUS			UL(16)
+#define DEFAULTS_MACHINE_MAX_CPU_CLUSTERS	UL(4)
+
 #define DEFAULTS_MACHINE_LIBFDT_WORKAROUND	DEFAULTS_ENABLE
 
-/* Device Tree */
-#define DEFAULTS_DEVICETREE_CELL_SIZE		2
+/* Platform */
+#define DEFAULTS_PLAT_DEVICETREE_CELL_SIZE	2
 
-/* Debug controls */
-#define DEFAULTS_KERNEL_NO_BOOTLOADER		DEFAULTS_DISABLE
+/* Boot Arguments */
+#define DEFAULTS_BA_OFFSET_VIRTBASE			UL(8)
+#define DEFAULTS_BA_OFFSET_PHYSBASE			UL(16)
+#define DEFAULTS_BA_OFFSET_MEMSIZE			UL(24)
 
-#define DEFAULTS_KERNEL_VIRTBASE    0xfffffff000000000
-#define DEFAULTS_KENREL_PHYSBASE    0x08000000
-#define DEFAULTS_KERNEL_MEMSIZE     0x50000000
+#define DEFAULTS_BA_OFFSET_KERN_PHYBASE		UL(30)
 
-#define DEFAULTS_KERNEL_FDT_BASE    0x41500000
+
 
 
 #endif /* __kern_defaults_h__ */

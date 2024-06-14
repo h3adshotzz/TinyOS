@@ -28,8 +28,11 @@
 #define __KERN_ASSERT_H__
 
 #include <tinylibc/stdint.h>
+#include <libkern/panic.h>
+#include <kern/kprintf.h>
 
-#define abort() ((void)0)
+
+#define abort() ((void) panic("failed assertion"))
 
 #define __ASSERT_FILE_NAME  __FILE__
 

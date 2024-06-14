@@ -1,4 +1,4 @@
-//===----------------------------------------------------------------------===//
+	//===----------------------------------------------------------------------===//
 //
 //                                  tinyOS
 //
@@ -29,9 +29,8 @@
 #include <kern/vm/vm.h>
 #include <kern/machine.h>
 #include <kern/defaults.h>
-#include <kern/machine/machine_irq.h>
 
-#include <drivers/irqs/irq-gicv3.h>
+#include <drivers/irq/irq-gicv3.h>
 
 struct gicv3_data {
 	int				version;
@@ -52,8 +51,7 @@ struct gicv3_dist_frame		*__dist;
 struct gicv3_redist_frame	*__redist;
 
 /* GIC interface data */
-PRIVATE_STATIC_DEFINE(struct gicv3_data) gic_data 
-	__attribute__((section(".data")));
+struct gicv3_data gic_data __attribute__((section(".data")));
 
 /**
  * Total number of SGIs. The SGI/PPI range is 0-31.
