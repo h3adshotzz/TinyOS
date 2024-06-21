@@ -23,4 +23,5 @@ KERNEL_SOURCES	+=	arch/start.o		\
 					arch/data.o			\
 					arch/mmu.o			\
 					arch/handler.o		\
+					arch/timer.o		\
 					arch/helpers.o
