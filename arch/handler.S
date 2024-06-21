@@ -214,3 +214,70 @@ L__exception_exit:
 
 	ldp		x0, x1, [x0, #0]
 	eret
+
+/*******************************************************************************
+ * CPU Context Switching
+ ******************************************************************************/
+
+/**
+ * __fork64_switch
+ *
+ * Switch from one task to another, saving the current cpu state and stack to
+ * the current task (x0) and restoring that of the next (x1).
+ *
+ */
+	.align		12
+	.globl		__fork64_switch
+__fork64_switch:
+
+	/**
+	 *	The task's context is placed 8 bytes from the base of the task struct,
+	 *	we use x9 here as the pointer to the task context. The first step is to
+	 *	write the current tasks x19-x31 registers to the context.
+	 */
+	mov		x10, #8
+	add		x9, x0, x10			/* x9 = cpu_context */
+
+	/**
+	 *	We cannot use the stack pointer with load/store instructions, so move it
+	 *	into a register we don't care about first, and then store it. After that
+	 *	save the calee registers into the context.
+	 */
+	mov		x8, sp
+
+	stp		x19, x20, [x9, #16 * 0]
+	stp		x21, x22, [x9, #16 * 1]
+	stp		x23, x24, [x9, #16 * 2]
+	stp		x25, x26, [x9, #16 * 3]
+	stp		x27, x28, [x9, #16 * 4]
+	stp		x29, x8, [x9, #16 * 5]
+	stp		lr, xzr, [x9, #16 * 6]
+
+	/* Now, restore the cpu context from the target task structure */
+	add		x9, x1, x10			/* x9 = cpu_context */
+
+	ldp		x19, x20, [x9, #16 * 0]
+	ldp		x21, x22, [x9, #16 * 1]
+	ldp		x23, x24, [x9, #16 * 2]
+	ldp		x25, x26, [x9, #16 * 3]
+	ldp		x27, x28, [x9, #16 * 4]
+	ldp		x29, x8, [x9, #16 * 5]
+	ldr		lr, [x9, #16 * 6]
+
+	/* Set the stack pointer */
+	mov		sp, x8
+
+	/**
+	 *	The link register should now contain the address of the next instruction
+	 *	for the target task. If this is the first time a new task has executed
+	 *	after being spawned, the return address should be to __fork64_return.
+	 */
+	mov		x0, x20
+	ret
+
+
+	.align		2
+	.globl		__fork64_return
+__fork64_return:
+	brk #1
+	ret
