@@ -19,15 +19,16 @@
 #
 #===-----------------------------------------------------------------------===//
 
-KERNEL_SOURCES	+=	kern/main.o			\
-					kern/cpu.o			\
-					kern/task.o			\
-					kern/kprintf.o		\
-					kern/exception.o	\
-					kern/machine.o		\
-					kern/vm/vm.o		\
-					kern/vm/vm_walk.o	\
-					kern/vm/vm_page.o	\
-					kern/vm/vm_map.o	\
-					kern/vm/pmap.o		\
+KERNEL_SOURCES	+=	kern/main.o						\
+					kern/cpu.o						\
+					kern/task.o						\
+					kern/kprintf.o					\
+					kern/exception.o				\
+					kern/machine.o					\
+					kern/vm/vm.o					\
+					kern/vm/vm_walk.o				\
+					kern/vm/vm_page.o				\
+					kern/vm/vm_map.o				\
+					kern/vm/pmap.o					\
+					kern/machine/machine_timer.o	\
 					kern/machine/machine-irq.o

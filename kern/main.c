@@ -131,6 +131,9 @@ void kernel_init (struct boot_args *boot_args, uint64_t x1, uint64_t x2)
 	/* configure the interrupt controller */
 	machine_init_interrupts ();
 
+	/* configure system timers */
+	machine_init_timers();
+
 	/* create the kernel task */
 	task_init();
 	kernel_task_create (kernel_task, kernel_task_test, vm_get_kernel_map (), 
