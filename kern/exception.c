@@ -28,6 +28,8 @@
 #include <tinylibc/string.h>
 #include <tinylibc/stddef.h>
 
+#include <kern/machine/machine_timer.h>
+
 #include <kern/defaults.h>
 #include <kern/kprintf.h>
 #include <kern/vm/vm.h>
@@ -532,8 +534,8 @@ void arm64_handler_irq (arm64_exception_frame_t *frame)
 
 	kprintf ("arm64_handler_irq(%d): intid: %d\n", irq_count, intid);
 
-//	if (intid == 30)
-//		arm64_timer_reset (0x5000000);
+	if (intid == 30)
+		machine_timer_reset(MACHINE_TIMER_RESET_VALUE);
 
 	irq_count++;
 }
