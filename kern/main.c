@@ -54,8 +54,14 @@
 extern vm_address_t intstack_top;
 extern vm_address_t excepstack_top;
 
+extern vm_address_t kernel_task_stack;
+
+static task_t *test_task_ptr;
+
 /* statics */
 void print_boot_banner ();
+
+void kernel_task_test();
 
 /**
  * The kernel will enter here from start.S and will complete the necessary setup
@@ -125,7 +131,39 @@ void kernel_init (struct boot_args *boot_args, uint64_t x1, uint64_t x2)
 	/* configure the interrupt controller */
 	machine_init_interrupts ();
 
+	/* create the kernel task */
+	task_init();
+	kernel_task_create (kernel_task, kernel_task_test, vm_get_kernel_map (), 
+		((vm_address_t) kernel_task + sizeof(task_t)));
+	kprintf ("kernel_task: 0x%lx\n", kernel_task);
+
 	kprintf("minimal kernel startup complete\n");
+
+	task_t test_task;
+	uint64_t res = __fork64_switch(kernel_task, kernel_task);
+
+	arm64_cpu_context_t context = kernel_task->context;
+
+	kprintf_hexdump((&context), 0x0, sizeof(arm64_cpu_context_t));
+	kprintf("x19: 0x%016lx x20: 0x%016lx x21: 0x%016lx x22: 0x%016lx\n"
+			"x23: 0x%016lx x24: 0x%016lx x25: 0x%016lx x26: 0x%016lx\n",
+			context.x19, context.x20, context.x21,
+			context.x22, context.x23, context.x24,
+			context.x25, context.x26);
+	kprintf ("x27: 0x%016lx x28: 0x%016lx fp:  0x%016lx sp:  0x%016lx\n"
+			"pc:  0x%016lx\n",
+			context.x27, context.x28, context.fp, context.sp,
+			context.pc);
+
+	kprintf("__fork64_switch: 0x%016lx\n", res);
+
+	kprintf ("kernel_task_test: 0x%lx\n", kernel_task_test);
+
+	test_task_ptr = ptokva(&test_task);
+
+	test_task.context = kernel_task->context;
+	test_task.context.pc = kernel_task_test;
+	__fork64_switch(kernel_task, ptokva(&test_task));
 
 	//machine_register_interrupt (4, 0);
 	//machine_send_interrupt (4, 1);
@@ -156,4 +194,10 @@ void print_boot_banner (const DTNode *dt_root, cpu_number_t cpu_num,
 	kprintf ("machine: %s\n", machine);
 	kprintf ("machine: detected '%d' cpus across '%d' clusters\n",
 		machine_get_num_cpus (), machine_get_num_clusters ());
+}
+
+void kernel_task_test ()
+{
+	kprintf ("\t\t==== hello from kernel task ====\n");
+	__fork64_switch(test_task_ptr, kernel_task);
 }
