@@ -21,6 +21,7 @@
 
 KERNEL_SOURCES	+=	kern/main.o			\
 					kern/cpu.o			\
+					kern/task.o			\
 					kern/kprintf.o		\
 					kern/exception.o	\
 					kern/machine.o		\

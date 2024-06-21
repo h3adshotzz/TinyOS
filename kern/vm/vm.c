@@ -24,6 +24,7 @@
 #include <kern/defaults.h>
 #include <kern/vm/pmap.h>
 #include <kern/vm/vm.h>
+#include <kern/task.h>
 
 #include <libkern/boot.h>
 #include <libkern/assert.h>

@@ -41,6 +41,7 @@
 #include <kern/machine/machine-irq.h>
 #include <kern/vm/vm.h>
 #include <kern/vm/pmap.h>
+#include <kern/task.h>
 
 /* platform */
 #include <platform/devicetree.h>
