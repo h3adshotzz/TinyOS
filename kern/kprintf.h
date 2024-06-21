@@ -29,6 +29,7 @@
 
 #include <libkern/types.h>
 #include <tinylibc/stddef.h>
+#include <tinylibc/stdint.h>
 
 void kprintf_init ();
 

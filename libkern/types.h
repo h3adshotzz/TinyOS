@@ -27,6 +27,9 @@
 #ifndef __TYPES_H__
 #define __TYPES_H__
 
+typedef int boolean_t;
+typedef int integer_t;
+
 /* Return types */
 typedef int	kern_return_t;
 

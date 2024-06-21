@@ -19,10 +19,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <libkern/version.h>
 #include <libkern/panic.h>
 
 #include <kern/defaults.h>
-#include <kern/version.h>
 #include <kern/kprintf.h>
 #include <kern/cpu.h>
 
