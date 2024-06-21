@@ -116,6 +116,11 @@ static void __vm_tests ()
 //	__vm_debug_dump_map(kernel_vm_map);
 }
 
+vm_map_t *vm_get_kernel_map()
+{
+	return ptokva(kernel_vm_map);
+}
+
 /*******************************************************************************
  * Name:	vm_configure
  * Desc:
@@ -138,6 +143,15 @@ void vm_configure (void)
 	vm_map_create(kernel_vm_map, &kernel_pmap, kernel_virt_base, VM_KERNEL_MIN_ADDRESS);
 	vm_map_entry_create(kernel_vm_map, kernel_virt_base, kernel_phys_size);
 
+	/**
+	 * TODO:	The second map entry created on the kernel_vm_map gives some
+	 * 			bullshit virtual address, and i'm not sure why. For now, allocate
+	 * 			this dummy entry, and then use the third for the kernel task.
+	*/
+	vm_map_alloc (kernel_vm_map, 0);
+
+	kernel_task = (task_t *) vm_map_alloc (kernel_vm_map, VM_PAGE_SIZE);
+	__vm_debug_dump_map(kernel_vm_map);
 }
 
 /*******************************************************************************
