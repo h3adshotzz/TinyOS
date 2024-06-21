@@ -101,6 +101,30 @@ typedef struct {
 } arm64_exception_frame_t;
 
 /**
+ * ARM64 CPU Context.
+ *
+ * This is used to save the cpu register state when switching contexts. The
+ * difference here is that the cpu context only needs to save registers x19-x31
+ * and doesn't need to save 'far' and 'esr'.
+*/
+typedef struct arm64_cpu_context {
+	uint64_t	x19;
+	uint64_t	x20;
+	uint64_t	x21;
+	uint64_t	x22;
+	uint64_t	x23;
+	uint64_t	x24;
+	uint64_t	x25;
+	uint64_t	x26;
+	uint64_t	x27;
+	uint64_t	x28;
+	uint64_t	fp;		// x29
+	uint64_t	sp;		// x30
+	uint64_t	pc;		// x31
+	uint64_t	_res;
+} arm64_cpu_context_t __attribute__((packed));
+
+/**
  * Exception Types
 */
 typedef enum {
