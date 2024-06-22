@@ -343,7 +343,14 @@ static void _print_panic_header (cpu_number_t cpu, uint32_t pid,
 {
 	kprintf ("\n---- KERNEL PANIC ----\n");
 	kprintf ("CPU: %d: PID: %d: Kernel Panic at 0x%016llx: ",
-		cpu, pid, addr);
+		cpu, current_task->pid, addr);
+}
+
+static void _print_panic_header_no_address (cpu_number_t cpu, uint32_t pid)
+{
+	kprintf ("\n---- KERNEL PANIC ----\n");
+	kprintf ("CPU: %d: PID: %d: Kernel Panic: ",
+		cpu, current_task->pid);
 }
 
 static void _print_panic_os_info ()
@@ -402,15 +409,13 @@ static void _print_cpu_register_state (arm64_exception_frame_t *frame)
 		frame->regs[28], frame->fp, frame->lr, frame->sp
 	);
 
-	kprintf ("  pc: 0x%016llx\n\n", frame->pc);
-
 	/**
 	 * Get the exception level at the time of the commit, and print the FAR and
 	 * ESR registers.
 	*/
 	cur_el = 1;
 	kprintf ("Exception taken at EL%d\n", cur_el);
-	kprintf ("  FAR_EL%d: 0x%016llx\n", cur_el, frame->far);
+	kprintf ("  FAR_EL%d: 0x%016llx (0x%08lx)\n", cur_el, ptokva(frame->far), frame->far);
 	kprintf ("  ESR_EL%d: 0x%016llx\n\n", cur_el, frame->esr);
 }
 
@@ -420,7 +425,7 @@ static void _print_backtrace (cpu_number_t cpu_num)
 	 * Output the CPU backtrace.
 	*/
 	kprintf ("Backtrace (CPU%d):\n\n", cpu_num);
-	kprintf ("Process name (0x%016llx): %s\n\n", 0x0, "test_process");
+	kprintf ("Process name: %s\n\n", current_task->name);
 }
 
 /**
@@ -438,7 +443,7 @@ static void panic_with_thread_state (arm64_exception_frame_t *frame, vm_address_
 	fault_cpu = cpu_get_current ();
 	cpu_num = fault_cpu.cpu_num;
 
-	_print_panic_header (cpu_num, 0, frame->pc);
+	_print_panic_header (cpu_num, 0, ptokva(fault_address));
 	va_start (args, fmt);
 	vprintf (fmt, args);
 	va_end (args);
@@ -465,6 +470,28 @@ static void panic2 (vm_address_t fault_address, const char *fmt, ...)
 	_print_panic_header (cpu_num, 0, fault_address);
 	kprintf ("%s\n\n", fmt);
 
+	_print_backtrace (cpu_num);
+	_print_panic_os_info ();
+}
+
+/**
+ * Name:	panic3
+ * Desc:	Print the Kernel Panic without the CPU register state, or fault
+ * 			address.
+*/
+static void panic3 (const char *fmt, ...)
+{
+	exception_level_t	cur_el;
+	cpu_number_t		cpu_num;
+	cpu_t				fault_cpu;
+
+	fault_cpu = cpu_get_current();
+	cpu_num = fault_cpu.cpu_num;
+
+	_print_panic_header_no_address (cpu_num, current_task->pid);
+	kprintf ("%s\n\n", fmt);
+
+	_print_backtrace (cpu_num);
 	_print_panic_os_info ();
 }
 
@@ -479,7 +506,7 @@ static void panic2 (vm_address_t fault_address, const char *fmt, ...)
 __KERNEL_FAULT_HANDLER
 void handle_breakpoint (arm64_exception_frame_t *frame)
 {
-	panic_with_thread_state (frame, frame->pc, "Breakpoint 64");
+	panic3 ("Breakpoint 64");
 }
 
 /**
@@ -489,7 +516,7 @@ void handle_breakpoint (arm64_exception_frame_t *frame)
 __KERNEL_FAULT_HANDLER
 void handle_svc (arm64_exception_frame_t *frame)
 {
-	panic2 (frame->pc, "Supervisor Call (64)");
+	panic3 ("Supervisor Call (64)");
 }
 
 /**
@@ -515,7 +542,7 @@ void handle_abort (arm64_exception_frame_t *frame, abort_handler_t handler, abor
 __KERNEL_ABORT_HANDLER
 void handle_msr_trap (arm64_exception_frame_t *frame)
 {
-	panic2 (frame->pc, "Trapped MSR, MRS, or System instruction");
+	panic2 (frame->fp, "Trapped MSR, MRS, or System instruction");
 }
 
 /*******************************************************************************

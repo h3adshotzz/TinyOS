@@ -52,9 +52,9 @@
 /* save the exception registers to the exception frame */
 .macro save_exception_registers
 	mrs		x1, FAR_EL1
-	str		x1, [x0, #264]
+	str		x1, [x0, #244]
 	mrs		x1, ESR_EL1
-	str		x1, [x0, #272]
+	str		x1, [x0, #248]
 .endm
 
 /*******************************************************************************
@@ -175,8 +175,8 @@ L__dispatch64:
 	mrs		x22, ELR_EL1		// Exception Link Register
 	mrs		x23, SPSR_EL1		// Current Stack Pointer
 
-	str		x22, [x0, #248]
-	str		x23, [x0, #256]
+	str		x22, [x0, #236]		// frame->lr = ELR
+	str		x23, [x0, #240]		// frame->sp = SPSR_EL1
 
 	mov		x28, x0
 	blr		x1
@@ -187,8 +187,8 @@ L__dispatch64:
 L__exception_exit:
 	mov		x0, x28
 
-	ldr		x22, [x0, #248]
-	ldr		x23, [x0, #256]
+	ldr		x22, [x0, #236]
+	ldr		x23, [x0, #240]
 
 	msr		ELR_EL1, x22
 	msr		SPSR_EL1, x23
@@ -209,7 +209,7 @@ L__exception_exit:
 	ldp		x28, fp, [x0, #224]
 	ldr		lr, [x0, #232]
 
-	ldr		x1, [x0, #240]
+	ldr		x1, [x0, #236]
 	mov		sp, x1
 
 	ldp		x0, x1, [x0, #0]

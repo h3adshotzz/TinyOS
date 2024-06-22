@@ -744,8 +744,32 @@
 #define ISS_DA_S1PTW_SHIFT		7
 #define ISS_DA_S1PTW			(1 << ISS_DA_S1PTW_SHIFT)
 
-#define ISS_DA_FSC_MASK			0x3F
+#define ISS_DA_FSC_MASK			0x3f
 #define ISS_DA_FSC(x)			(x & ISS_DA_FSC_MASK)
+
+
+/*******************************************************************************
+ * Name:	Instruction Abort ISS (EL1)
+ * Desc:	Instruction Abort bitfields
+*******************************************************************************/
+
+/**
+ * 	Instruction Abort ISS (EL1)
+ * 
+ * 	+---------------+--+---+------+
+ * 	|000000000000000|EA|000| IFSC |
+ * 	+---------------+--+---+------+
+ * 
+ * 	Where:
+ * 		EA:		External Abort type
+ * 		IFSC:	Instruction Fault Status Code
+*/
+
+#define ISS_IA_EA_SHIFT			9
+#define ISS_IA_EA				(0x1 << ISS_IA_EA_SHIFT)
+
+#define ISS_IA_FSC_MASK			0x3f
+#define ISS_IA_FSC(x)			(x & ISS_IA_FSC_MASK)
 
 
 /*******************************************************************************

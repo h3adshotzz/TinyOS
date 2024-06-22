@@ -90,13 +90,12 @@ typedef int				exception_level_t;
  * the exception handler.
 */
 typedef struct {
-	uint64_t	regs[29];
-	uint64_t	fp;
-	uint64_t	lr;
-	uint64_t	sp;
-	uint64_t	pc;
-	uint64_t	far;
-	uint64_t	esr;
+	uint64_t	regs[27];
+	uint64_t	fp;		// 232
+	uint64_t	lr;		// 236
+	uint64_t	sp;		// 240
+	uint64_t	far;	// 244
+	uint64_t	esr;	// 248
 	uint64_t	res0;
 } arm64_exception_frame_t;
 
