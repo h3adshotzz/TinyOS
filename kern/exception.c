@@ -231,6 +231,19 @@ static void inspect_data_abort (fault_status_t *fault_code,
 	}
 }
 
+/**
+ * Name:	inspect_instruction_abort
+ * Desc:	Determine the fault type. This was borrowed from XNU. Inspect the
+ * 			ISS value to determine the default_code and fault_status for the
+ * 			instruction abort.
+*/
+static void inspect_instruction_abort (fault_status_t *fault_code,
+		fault_type_t *fault_type, uint32_t iss)
+{
+	*fault_code = ISS_IA_FSC(iss);
+	*fault_type = (VM_PROT_READ | VM_PROT_EXECUTE);
+}
+
 
 /*******************************************************************************
  * Abort Handlers
@@ -284,7 +297,35 @@ void handle_data_abort (arm64_exception_frame_t *frame,
 		return;
 	}
 
-	panic_with_thread_state (frame, frame->far, "Data Abort - Unknown");
+	/**
+	 * Panic with Address Size Fault
+	*/
+	if (is_address_size_fault (fault_status)) {
+		panic_with_thread_state (frame, fault_address, "Data Abort - Address Size Fault, Level %d",
+			vm_fault_get_level (fault_status));
+		return;
+	}
+
+	panic_with_thread_state (frame, frame->far, "Data Abort - Unknown (0x%lx)",
+		fault_status);
+}
+
+__KERNEL_ABORT_HANDLER
+void handle_instruction_abort (arm64_exception_frame_t *frame,
+		fault_address_t fault_address, fault_status_t fault_status)
+{
+
+	/**
+	 * Panic with Translation Fault.
+	*/
+	if (is_translation_fault (fault_status)) {
+		panic_with_thread_state (frame, fault_address, "Kernel Instruction Abort - Translation Fault, Level %d",
+			vm_fault_get_level (fault_status));
+		return;
+	}
+
+	panic_with_thread_state (frame, frame->far, "Kernel Instruction Abort - Unknwon (0x%x)",
+		fault_status);
 }
 
 
@@ -519,6 +560,13 @@ void arm64_handler_synchronous (arm64_exception_frame_t *frame)
 		/* MSR Trap */
 		case ESR_EC_MSR_TRAP:
 			handle_msr_trap (frame);
+			cpu_halt ();
+			break;
+
+		/* Instruction Abort (EL0 and EL1) */
+		case ESR_EC_IABORT_EL1:
+		case ESR_EC_IABORT_EL0:
+			handle_abort (frame, (abort_handler_t) handle_instruction_abort, inspect_instruction_abort);
 			cpu_halt ();
 			break;
 
