@@ -90,10 +90,11 @@ static void panic_with_thread_state (arm64_exception_frame_t *, vm_address_t, co
 /**
  * Misc Helper Functions
 */
-static inline int is_translation_vault (fault_status_t);
-static inline int is_permission_vault (fault_status_t);
-static inline int is_alignment_vault (fault_status_t);
-static inline int is_vm_vault (fault_status_t);
+static inline int is_translation_fault (fault_status_t);
+static inline int is_address_size_fault (fault_status_t);
+static inline int is_permission_fault (fault_status_t);
+static inline int is_alignment_fault (fault_status_t);
+static inline int is_vm_fault (fault_status_t);
 
 static inline int vm_fault_get_level (fault_status_t);
 
@@ -134,6 +135,19 @@ static inline int is_translation_fault (fault_status_t status)
 	}
 }
 
+static inline int is_address_size_fault (fault_status_t status)
+{
+	switch (status) {
+		case FSC_ADDRESS_SIZE_FAULT_L0:
+		case FSC_ADDRESS_SIZE_FAULT_L1:
+		case FSC_ADDRESS_SIZE_FAULT_L2:
+		case FSC_ADDRESS_SIZE_FAULT_L3:
+			return 1;
+		default:
+			return 0;
+	}
+}
+
 static inline int is_permission_fault (fault_status_t status)
 {
 	switch (status) {
@@ -162,10 +176,12 @@ static inline int vm_fault_get_level (fault_status_t status)
 	switch (status) {
 		/* Level 0 */
 		case FSC_TRANSLATION_FAULT_L0:
+		case FSC_ADDRESS_SIZE_FAULT_L0:
 			return 0;
 
 		/* Level 1 */
 		case FSC_TRANSLATION_FAULT_L1:
+		case FSC_ADDRESS_SIZE_FAULT_L1:
 		case FSC_ACCESS_FLAG_FAULT_L1:
 		case FSC_PERMISSION_FAULT_L1:
 		case FSC_SYNC_EXT_ABORT_TT_L1:
@@ -174,6 +190,7 @@ static inline int vm_fault_get_level (fault_status_t status)
 
 		/* Level 2 */
 		case FSC_TRANSLATION_FAULT_L2:
+		case FSC_ADDRESS_SIZE_FAULT_L2:
 		case FSC_ACCESS_FLAG_FAULT_L2:
 		case FSC_PERMISSION_FAULT_L2:
 		case FSC_SYNC_EXT_ABORT_TT_L2:
@@ -182,6 +199,7 @@ static inline int vm_fault_get_level (fault_status_t status)
 
 		/* Level 3 */
 		case FSC_TRANSLATION_FAULT_L3:
+		case FSC_ADDRESS_SIZE_FAULT_L3:
 		case FSC_ACCESS_FLAG_FAULT_L3:
 		case FSC_PERMISSION_FAULT_L3:
 		case FSC_SYNC_EXT_ABORT_TT_L3:
