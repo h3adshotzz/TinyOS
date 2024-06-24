@@ -76,7 +76,6 @@ typedef struct vm_map {
 //	vm_map_entry_t	*entries;
 } vm_map_t;
 
-
 /* virtual memory maps */
 extern void vm_map_create 	(vm_map_t *map, pmap_t *pmap, vm_address_t min, vm_address_t max);
 extern void vm_map_unlock 	(vm_map_t *map);
@@ -88,5 +87,8 @@ extern vm_address_t vm_map_alloc	(vm_map_t *map, vm_size_t size);
 extern void vm_map_entry_create (vm_map_t *map, vm_address_t base, vm_size_t size);
 
 vm_map_t *vm_map_create_new (pmap_t *pmap, vm_address_t min, vm_address_t max);
+
+// maybe move?
+extern vm_map_t *vm_get_kernel_map();
 
 #endif /* __kern_vm_map_h__ */

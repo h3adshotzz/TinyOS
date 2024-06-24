@@ -45,16 +45,14 @@ static phys_size_t	kernel_phys_size;
 
 static vm_address_t	kernel_virt_base;
 
-/* kernel vm map */
-static vm_map_t		*kernel_vm_map;
-
-/* kernel pmap */
-static struct pmap kernel_pmap_ref __attribute__((section(".data")));
-static pmap_t *kernel_pmap = &kernel_pmap_ref;
+/* kernel pmap and vm_map */
+static struct pmap 	kernel_pmap_ref __attribute__((section(".data")));
+static pmap_t 		*kernel_pmap = &kernel_pmap_ref;
+static vm_map_t		*kernel_vm_map = (&kernel_pmap_ref + sizeof(task_t));
 
 
 /* temporary, for debugging */
-static void __vm_debug_dump_map (vm_map_t *map)
+void __vm_debug_dump_map (vm_map_t *map)
 {
 	vm_log("dumping virtual memory map from address: 0x%lx\n", map);
 	kprintf("   timestamp: 0x%lx\n", map->timestamp);
@@ -73,53 +71,20 @@ static void __vm_debug_dump_map (vm_map_t *map)
 	kprintf ("\n");
 }
 
-static void __vm_tests ()
-{
-	vm_address_t test_address = 0xfffffff001802008;
-	const char *test_data = "test_data_";
-
-	memcpy((const void *) test_address, &test_data, strlen(test_data));
-	kprintf ("test_data @ 0x%lx: %s\n", test_address, (const char *) test_address);
-
-	__vm_debug_dump_map(kernel_vm_map);
-	vm_pagetable_walk_ttbr1();
-
-	////////////////////////////////////////////////////////////////////////////
-	// Testing
-//
-//	kprintf ("\n\n");
-//
-//	vm_map_t *kernel_vm_map = (vm_map_t *) (&kernel_pmap_ref + sizeof(pmap_t));
-//	kprintf ("kernel_vm_map: 0x%lx\n", kernel_vm_map);
-//	kprintf ("kernel_virt_base: 0x%lx\n", kernel_virt_base);
-//
-//	vm_map_create(kernel_vm_map, &kernel_pmap, kernel_virt_base, VM_KERNEL_MAX_ADDRESS);
-//	vm_map_entry_create(kernel_vm_map, kernel_virt_base, kernel_phys_size);
-//	__vm_debug_dump_map(kernel_vm_map);
-//
-//	pmap_t *pmap = &kernel_vm_map->pmap;
-//
-//	vm_address_t test_address;
-//	const char *test_data = "test_data_";
-//
-//	test_address = vm_map_alloc(kernel_vm_map, 4096);
-//	memcpy (&test_address, &test_data, strlen(test_data));
-//	kprintf ("test_data @ 0x%lx: %s\n", test_address, (const char *) test_address);
-//
-//	test_address = vm_map_alloc(kernel_vm_map, 4096);
-//	memcpy (&test_address, &test_data, strlen(test_data));
-//	kprintf ("test_data @ 0x%lx: %s\n", test_address, (const char *) test_address);
-//
-//	test_address = vm_map_alloc(kernel_vm_map, 4096);
-//	memcpy (&test_address, &test_data, strlen(test_data));
-//	kprintf ("test_data @ 0x%lx: %s\n", test_address, (const char *) test_address);
-//
-//	__vm_debug_dump_map(kernel_vm_map);
-}
-
 vm_map_t *vm_get_kernel_map()
 {
-	return ptokva(kernel_vm_map);
+	return (vm_map_t *) kernel_vm_map;
+}
+
+kern_return_t vm_is_address_valid(vm_address_t addr)
+{
+	/**
+	 * Check if a given virtual address is valid by converting it to a physical
+	 * address via the pmap mmu api. If the result is non-zero, the address is
+	 * valid, otherwise it's not.
+	*/
+	return (mmu_translate_kvtop(addr)) ? 
+		KERN_RETURN_SUCCESS : PMAP_RETURN_FAILED;
 }
 
 /*******************************************************************************
@@ -140,7 +105,6 @@ void vm_configure (void)
 	 * Create the kernel tasks vm_map just after the pmap structure. This is all
 	 * (hopefully) within a single 4KB page.
 	*/
-	kernel_vm_map = (vm_map_t *) (&kernel_pmap_ref + sizeof(pmap_t));
 	vm_map_create(kernel_vm_map, &kernel_pmap, kernel_virt_base, VM_KERNEL_MIN_ADDRESS);
 	vm_map_entry_create(kernel_vm_map, kernel_virt_base, kernel_phys_size);
 
@@ -151,8 +115,6 @@ void vm_configure (void)
 	*/
 	vm_map_alloc (kernel_vm_map, 0);
 
-	kernel_task = (task_t *) vm_map_alloc (kernel_vm_map, VM_PAGE_SIZE);
-	__vm_debug_dump_map(kernel_vm_map);
 }
 
 /*******************************************************************************

@@ -24,6 +24,7 @@
 
 #include <kern/defaults.h>
 #include <kern/kprintf.h>
+#include <kern/task.h>
 #include <kern/cpu.h>
 
 #include <tinylibc/stddef.h>
@@ -36,7 +37,7 @@ void panic (const char *fmt, ...)
 
 	/* get the current cpu */
 	cpu = cpu_get_id (0);	// cpu_get_current();
-	pid = 0;
+	pid = get_current_task()->pid;
 
 	kprintf ("\n---- Kernel Panic ----\n");
 	kprintf ("CPU: %d, PID: %d: ", cpu.cpu_num, pid);

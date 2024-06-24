@@ -33,9 +33,10 @@
 #include <kern/defaults.h>
 #include <kern/kprintf.h>
 #include <kern/vm/vm.h>
-#include <arch/arch.h>
+#include <kern/task.h>
 #include <kern/cpu.h>
 
+#include <arch/arch.h>
 #include <libkern/panic.h>
 #include <libkern/version.h>
 
@@ -343,14 +344,14 @@ static void _print_panic_header (cpu_number_t cpu, uint32_t pid,
 {
 	kprintf ("\n---- KERNEL PANIC ----\n");
 	kprintf ("CPU: %d: PID: %d: Kernel Panic at 0x%016llx: ",
-		cpu, current_task->pid, addr);
+		cpu, get_current_task()->pid, addr);
 }
 
 static void _print_panic_header_no_address (cpu_number_t cpu, uint32_t pid)
 {
 	kprintf ("\n---- KERNEL PANIC ----\n");
 	kprintf ("CPU: %d: PID: %d: Kernel Panic: ",
-		cpu, current_task->pid);
+		cpu, get_current_task()->pid);
 }
 
 static void _print_panic_os_info ()
@@ -425,7 +426,7 @@ static void _print_backtrace (cpu_number_t cpu_num)
 	 * Output the CPU backtrace.
 	*/
 	kprintf ("Backtrace (CPU%d):\n\n", cpu_num);
-	kprintf ("Process name: %s\n\n", current_task->name);
+	kprintf ("Process name: %s\n\n", get_current_task()->name);
 }
 
 /**
@@ -488,7 +489,7 @@ static void panic3 (const char *fmt, ...)
 	fault_cpu = cpu_get_current();
 	cpu_num = fault_cpu.cpu_num;
 
-	_print_panic_header_no_address (cpu_num, current_task->pid);
+	_print_panic_header_no_address (cpu_num, get_current_task()->pid);
 	kprintf ("%s\n\n", fmt);
 
 	_print_backtrace (cpu_num);
