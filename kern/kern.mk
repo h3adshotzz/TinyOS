@@ -25,6 +25,7 @@ KERNEL_SOURCES	+=	kern/main.o						\
 					kern/kprintf.o					\
 					kern/exception.o				\
 					kern/machine.o					\
+					kern/mm/zalloc.o				\
 					kern/vm/vm.o					\
 					kern/vm/vm_walk.o				\
 					kern/vm/vm_page.o				\

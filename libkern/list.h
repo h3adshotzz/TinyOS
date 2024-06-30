@@ -29,6 +29,8 @@
 
 #include <tinylibc/stdint.h>
 
+static inline void prefetch(const void *x) {;}
+
 #undef offsetof
 #define offsetof(type, member)	((size_t)&((type *)0)->member)
 
