@@ -56,6 +56,10 @@ typedef uint64_t		tt_entry_t;		/* translation table page entry */
 typedef uint64_t		phys_addr_t;	/* physical address */
 typedef uint64_t		phys_size_t;	/* physical size */
 
+/* Translation table entry flags */
+#define PMAP_ACCESS_NOACCESS	UL(0x1)	/* page is not accessible */
+#define PMAP_ACCESS_READONLY	UL(0x2)	/* page is read-only */
+#define PMAP_ACCESS_READWRITE	UL(0x4)	/* page is read-write */
 
 /**
  * MMU helpers. These are external declarations of assembly function. There are
@@ -126,7 +130,8 @@ extern vm_address_t		pmap_ptregion_alloc ();
 
 /* translation table management */
 extern pmap_return_t	pmap_tt_create_tte (tt_table_t *, phys_addr_t, 
-											vm_address_t, vm_size_t);
+											vm_address_t, vm_size_t,
+											vm_flags_t);
 extern pmap_return_t	pmap_map_page (pmap_t *, phys_addr_t);
 
 /* pmap */

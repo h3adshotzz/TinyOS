@@ -107,7 +107,8 @@ pmap_return_t pmap_ptregion_create ()
  *	Desc:	Create a physical translation table entry in the given table.
  */
 pmap_return_t pmap_tt_create_tte (tt_table_t *table, phys_addr_t pbase,
-								vm_address_t vbase, vm_size_t size)
+								vm_address_t vbase, vm_size_t size,
+								vm_flags_t flags)
 {
 	vm_address_t map_address, map_address_l2, map_address_l3, vend;
 	vm_offset_t index;
@@ -116,6 +117,8 @@ pmap_return_t pmap_tt_create_tte (tt_table_t *table, phys_addr_t pbase,
 
 //	pmap_log ("pmap_tt_create_tte(0x%lx, 0x%lx, 0x%lx, %d)\n",
 //		table, pbase, vbase, size);
+
+	/* TODO: apply attributes to tte's, e.g. NOACCESS, READONLY, READWRITE */
 
 	/* calculate the virtual end of the region */
 	vend = vbase + size;
@@ -171,7 +174,7 @@ pmap_return_t pmap_tt_create_tte (tt_table_t *table, phys_addr_t pbase,
 		map_address += TT_L1_SIZE;
 	}
 
-//	pmap_log ("mapped 0x%llx -> 0x%llx to phys 0x%llx\n", vbase, vend, pbase);
+	pmap_log ("mapped 0x%llx -> 0x%llx to phys 0x%llx\n", vbase, vend, pbase);
 	return PMAP_RETURN_SUCCESS;
 }
 
