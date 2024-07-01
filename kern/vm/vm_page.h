@@ -30,10 +30,11 @@
 #include <tinylibc/stdint.h>
 
 #include <kern/vm/vm_types.h>
+#include <kern/defaults.h>
 #include <kern/vm/pmap.h>
 #include <kern/vm/vm.h>
 
-#include <kern/defaults.h>
+#include <libkern/list.h>
 
 /* interface logger */
 #define vm_page_log(fmt, ...)		interface_log("vm_page", fmt, ##__VA_ARGS__)
@@ -44,6 +45,9 @@
 /* Page size */
 #define VM_PAGE_SIZE				DEFAULTS_KERNEL_VM_PAGE_SIZE
 #define VM_PAGE_STRUCT_SIZE			sizeof(vm_page_t)
+
+/* Guard page */
+#define VM_PAGE_GUARD_MAGIC			0xefbeaddeefbeadde
 
 /**
  * Virtual Memory Physical Page
@@ -57,9 +61,7 @@ struct vm_page {
 	/* Physical memory address of the page */
 	phys_addr_t		paddr;
 
-	/* Next and previous pages */
-	vm_page_t		*next;
-	vm_page_t		*prev;
+	list_node_t		siblings;
 
 	/* Page index */
 	uint64_t		idx;
@@ -86,7 +88,7 @@ extern void vm_page_bootstrap (phys_addr_t membase, phys_size_t memsize,
 							phys_size_t kernsize);
 
 extern phys_addr_t vm_page_alloc ();
+extern phys_addr_t vm_guard_page();
 extern void vm_page_free ();
-
 
 #endif /* __kern_vm_page_h__ */

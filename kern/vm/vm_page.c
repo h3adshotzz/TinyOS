@@ -22,6 +22,7 @@
 #include <tinylibc/string.h>
 #include <kern/vm/vm_page.h>
 #include <kern/vm/pmap.h>
+#include <kern/kprintf.h>
 
 /**
  * Page structures are stored within the kernel ".vm" segment, which is placed
@@ -40,6 +41,9 @@ static vm_page_t 	*vm_page_region;
 
 /* Highest page index */
 static uint64_t 	vm_page_idx;
+
+/* Page list */
+static list_t		page_list;
 
 /* fetch the page at given index */
 #define __vm_page_get_idx(__idx)		((vm_page_t *) &vm_page_region[__idx])
@@ -78,15 +82,7 @@ static int __vm_page_alloc_internal (phys_size_t paddr, int is_mapped)
 	page->state = VM_PAGE_STATE_FREE;
 	page->mapped = (is_mapped) ? VM_PAGE_IS_MAPPED : VM_PAGE_IS_NOT_MAPPED;
 
-	/* set next and prev pointers */
-	page->next = __vm_page_get_idx(0);
-	page->next->prev = page;
-
-	page->prev = __vm_page_get_idx(page->idx - 1);
-	page->prev->prev = page;
-
-	/* set the next pointer of the previous page */
-	page->prev->next = page;
+	list_add_tail(&page->siblings, &page_list);
 
 	/* increment the max index and region cursor */
 	__vm_page_region_cursor_inc;
@@ -118,6 +114,12 @@ phys_addr_t vm_page_alloc ()
 	last->state = VM_PAGE_STATE_ALLOC;
 
 	return last->paddr;
+}
+
+void vm_guard_page_fill(vm_address_t *guard_page)
+{
+	for (int i = 0; i < VM_PAGE_SIZE / sizeof(VM_PAGE_GUARD_MAGIC); i++)
+		guard_page[i] = VM_PAGE_GUARD_MAGIC;
 }
 
 /*******************************************************************************
@@ -172,6 +174,8 @@ void vm_page_bootstrap (phys_addr_t membase, phys_size_t memsize,
 
 	vm_page_region = (vm_page_t *) &vm_page_region_lower_bound;
 
+	INIT_LIST_HEAD(&page_list);
+
 	vm_page_log ("initialised page region: 0x%lx-0x%lx\n",
 		&vm_page_region_lower_bound, vm_page_region_upper_bound);
 
@@ -186,9 +190,8 @@ void vm_page_bootstrap (phys_addr_t membase, phys_size_t memsize,
 	first_page->state = VM_PAGE_STATE_FREE;
 	first_page->mapped = VM_PAGE_IS_NOT_MAPPED;		/* not mapped by default */
 
-	/* configure the doubly-linked list */
-	first_page->prev = (vm_page_t *) vm_page_region_cursor;
-	first_page->next = first_page;
+	/* add the page to the global page list */
+	list_add_tail(&first_page->siblings, &page_list);
 
 	/* move the page cursor and increment the index */
 	__vm_page_region_cursor_inc;
@@ -210,7 +213,7 @@ void vm_page_bootstrap (phys_addr_t membase, phys_size_t memsize,
 
 	/* mark the pages used by the kernel as allocated and mapped */
 	pcursor = membase;
-	kern_page_count = (kernsize + vm_page_region_size) / VM_PAGE_SIZE;
+	kern_page_count = ((kernsize + vm_page_region_size) / VM_PAGE_SIZE) + 1;
 	for (i = 0; i < kern_page_count; i++) {
 		kern_page = __vm_page_get_idx(i);
 
@@ -225,9 +228,9 @@ void vm_page_bootstrap (phys_addr_t membase, phys_size_t memsize,
 	/* testing: check that first->prev = last, and last->next = first */
 	for (int j = 0; j < page_count; j++) {
 		vm_page_t *tmp = __vm_page_get_idx(j);
-		if (j == 0 || j == page_count - 1)
-			vm_page_log ("tmp[%d]: tmp: 0x%llx next: 0x%llx, prev: 0x%llx, state: %d\n",
-				tmp->idx, tmp, tmp->next, tmp->prev, tmp->state);
+//		if (j == 0 || j == page_count - 1)
+//			vm_page_log ("tmp[%d]: tmp: 0x%llx next: 0x%llx, prev: 0x%llx, state: %d\n",
+//				tmp->idx, tmp, tmp->next, tmp->prev, tmp->state);
 	}
 #endif
 }
