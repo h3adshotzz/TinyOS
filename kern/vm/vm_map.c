@@ -53,6 +53,7 @@ void vm_map_entry_create (vm_map_t *map, vm_address_t base, vm_size_t size,
 	entry->base = base;
 	entry->size = size - 1;
 	entry->guard_page = (flags & VM_MAP_ENTRY_GUARD_PAGE) ? VM_TRUE : VM_FALSE;
+	entry->kernel_code = (flags & VM_ALLOC_KERNEL_CODE) ? VM_TRUE : VM_FALSE;
 
 	map->nentries += 1;
 	map->size += size;

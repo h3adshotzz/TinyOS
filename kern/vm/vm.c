@@ -71,6 +71,8 @@ void __vm_debug_dump_map (vm_map_t *map)
 			idx, entry->base, entry->base + entry->size, entry->size);
 		if (entry->guard_page)
 			kprintf("\t- GUARD_PAGE");
+		else if (entry->kernel_code)
+			kprintf("\t- KERNEL_CODE");
 
 		kprintf("\n");
 		idx+=1;
@@ -112,8 +114,8 @@ void vm_configure (void)
 	 * Create the kernel tasks vm_map just after the pmap structure. This is all
 	 * (hopefully) within a single 4KB page.
 	*/
-	vm_map_create(kernel_vm_map, &kernel_pmap, kernel_virt_base, VM_KERNEL_MIN_ADDRESS);
-	vm_map_entry_create(kernel_vm_map, kernel_virt_base, kernel_phys_size, VM_NULL);
+	vm_map_create(kernel_vm_map, &kernel_pmap, kernel_virt_base, VM_KERNEL_MAX_ADDRESS);
+	vm_map_entry_create(kernel_vm_map, kernel_virt_base, kernel_phys_size, VM_ALLOC_KERNEL_CODE);
 
 }
 

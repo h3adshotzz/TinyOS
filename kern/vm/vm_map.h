@@ -50,6 +50,7 @@
 /* Flags for allocating virtual memory */
 #define VM_ALLOC_GUARD_FIRST		(0x01)	/* guard page before allocation */
 #define VM_ALLOC_GUARD_LAST			(0x02)	/* guard page after allocation */
+#define VM_ALLOC_KERNEL_CODE		(0x04)	/* kernel code */
 
 #define VM_MAP_ENTRY_GUARD_PAGE		(0x01)
 
@@ -66,7 +67,8 @@ typedef struct vm_map_entry {
 
 	/* Flags */
 	uint32_t		guard_page	:1,
-					__unused_bits:31;
+					kernel_code	:1,
+					__unused_bits:30;
 
 	/* List of entries */
 	list_node_t		siblings;
