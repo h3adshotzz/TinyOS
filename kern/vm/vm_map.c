@@ -42,8 +42,12 @@ void vm_map_entry_create (vm_map_t *map, vm_address_t base, vm_size_t size,
 	vm_map_lock(map);
 
 	/* determine the base address of the next map entry */
-	entry = list_last_entry(&map->entries, vm_map_entry_t, siblings) +
-		VM_MAP_ENTRY_SIZE;
+	if (list_empty(&map->entries)) {
+		entry = (vm_map_entry_t *) (map + sizeof(vm_map_t));
+	} else {
+		entry = list_last_entry(&map->entries, vm_map_entry_t, siblings) +
+			VM_MAP_ENTRY_SIZE;
+	}
 	memset(entry, '\0', VM_MAP_ENTRY_SIZE);
 
 	entry->base = base;
@@ -94,6 +98,8 @@ static void __vm_map_init (vm_map_t *map, pmap_t *pmap, vm_address_t min,
 	/* TODO: implement locking */
 	map->lock = 1;
 
+	INIT_LIST_HEAD(&map->entries);
+
 	/**
 	 * Map entries should follow the map structure in memory. We'll set the
 	 * entries pointer to directly after the map.
@@ -111,8 +117,6 @@ void vm_map_create (vm_map_t *map, pmap_t *pmap, vm_address_t min,
 {
 	__vm_map_init(map, pmap, min, max);
 	vm_map_unlock(map);
-
-	INIT_LIST_HEAD(&map->entries);
 
 	/* TODO: check that `map` is on a page boundary */
 
