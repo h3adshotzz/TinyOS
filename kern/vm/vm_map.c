@@ -33,21 +33,28 @@
  * 			expected that this has already been done.
 *******************************************************************************/
 
-void vm_map_entry_create (vm_map_t *map, vm_address_t base, vm_size_t size)
+void vm_map_entry_create (vm_map_t *map, vm_address_t base, vm_size_t size,
+	vm_flags_t flags)
 {
 	vm_map_entry_t *entry;
 
+	/* lock the map while we make critical changes */
 	vm_map_lock(map);
 
-	entry = (vm_map_entry_t *) ((map + sizeof(vm_map_t)) +
-		(map->nentries * VM_MAP_ENTRY_SIZE));
-	memset(entry, '\0', sizeof(vm_map_entry_t));
+	/* determine the base address of the next map entry */
+	entry = list_last_entry(&map->entries, vm_map_entry_t, siblings) +
+		VM_MAP_ENTRY_SIZE;
+	memset(entry, '\0', VM_MAP_ENTRY_SIZE);
 
 	entry->base = base;
-	entry->size = size;
+	entry->size = size - 1;
+	entry->guard_page = (flags & VM_MAP_ENTRY_GUARD_PAGE) ? VM_TRUE : VM_FALSE;
 
 	map->nentries += 1;
 	map->size += size;
+
+	/* add the entry to the map's list */
+	list_add_tail(&entry->siblings, &map->entries);
 
 	vm_map_unlock(map);
 }
@@ -105,6 +112,8 @@ void vm_map_create (vm_map_t *map, pmap_t *pmap, vm_address_t min,
 	__vm_map_init(map, pmap, min, max);
 	vm_map_unlock(map);
 
+	INIT_LIST_HEAD(&map->entries);
+
 	/* TODO: check that `map` is on a page boundary */
 
 	vm_map_log("created new vm_map at 0x%lx for virtual address range: 0x%lx-0x%lx\n",
@@ -130,13 +139,15 @@ vm_map_t *vm_map_create_new (pmap_t *pmap, vm_address_t min, vm_address_t max)
 	map.lock = 1;
 	map.nentries = 0;
 
+	INIT_LIST_HEAD(&map.entries);
+
 	entry.base = min;
 	entry.size = VM_PAGE_SIZE;
 
 	paddr = vm_page_alloc();
 
 	ttep = pmap->ttep;
-	pmap_tt_create_tte(ttep, paddr, min, VM_PAGE_SIZE);
+	pmap_tt_create_tte(ttep, paddr, min, VM_PAGE_SIZE, PMAP_ACCESS_READWRITE);
 }
 
 /*******************************************************************************
@@ -149,36 +160,54 @@ vm_map_t *vm_map_create_new (pmap_t *pmap, vm_address_t min, vm_address_t max)
  * 			is placed one-after-the-other.
 *******************************************************************************/
 
-vm_address_t vm_map_alloc (vm_map_t *map, vm_size_t size)
+vm_address_t vm_map_alloc(vm_map_t *map, vm_size_t size, vm_flags_t flags)
 {
+	vm_address_t vbase, vcursor;
 	vm_map_entry_t *last_entry;
-	uint32_t page_count;
-	vm_address_t vbase;
+	phys_addr_t page_addr;
+	vm_size_t page_count;
 	pmap_t *pmap;
 
-	/* use the end of the last map entry as the base for the next */
-	last_entry = (vm_map_entry_t *) (map + (VM_MAP_ENTRY_SIZE * map->nentries));
-	page_count = (size < VM_PAGE_SIZE) ? 1 : size / VM_PAGE_SIZE;
+	pmap = &map->pmap;
+
+	/* use the last entry to calculate the base virtual address for this one */
+	last_entry = list_last_entry(&map->entries, vm_map_entry_t, siblings);
 
 	/* work out the base address for the allocation */
-	vbase = (vm_address_t) (last_entry->base + last_entry->size);
+	vcursor = vbase = (vm_address_t)
+		VM_ALIGN_ADDR(last_entry->base + last_entry->size + 1);
 
-	/**
-	 * reserve enough physical pages and create entries in the translation table
-	 * pointed to by the map->pmap.
-	*/
-	pmap = &map->pmap;
-	for (int i = 0; i < page_count; i++) {
-		phys_addr_t page_addr;
-
-		page_addr = vm_page_alloc();
-		pmap_tt_create_tte(&pmap->tte, page_addr, vbase, VM_PAGE_SIZE);
-
-		vbase += VM_PAGE_SIZE;
+	/* check if we need to allocate a guard page */
+	if (flags & VM_ALLOC_GUARD_FIRST) {
+		pmap_tt_create_tte(&pmap->tte, vm_page_alloc(), vcursor, VM_PAGE_SIZE,
+			PMAP_ACCESS_NOACCESS);
+		vm_map_entry_create(map, vcursor, VM_PAGE_SIZE, VM_MAP_ENTRY_GUARD_PAGE);
+		vm_guard_page_fill(vcursor);
+		vbase = vcursor += VM_PAGE_SIZE;
 	}
 
-	/* create the vm_map_entry */
-	vm_map_entry_create(map, vbase, page_count * VM_PAGE_SIZE);
+	/* allocate enough physical pages for the desired allocation size */
+	page_count = (size < VM_PAGE_SIZE) ? 1 : (size / VM_PAGE_SIZE);
+	for (int i = 0; i < page_count; i++) {
+		page_addr = vm_page_alloc();
+		pmap_tt_create_tte(&pmap->tte, page_addr, vcursor, VM_PAGE_SIZE,
+			PMAP_ACCESS_READWRITE);
+
+		vcursor += VM_PAGE_SIZE;
+	}
+
+	/* create the map entry for the allocated pages */
+	vm_map_entry_create(map, vbase, (vm_size_t) (page_count * VM_PAGE_SIZE),
+		VM_NULL);
+
+	/* check if we need a guard page after the allocation */
+	if (flags & VM_ALLOC_GUARD_LAST) {
+		pmap_tt_create_tte(&pmap->tte, vm_page_alloc(), vcursor, VM_PAGE_SIZE,
+			PMAP_ACCESS_NOACCESS);
+		vm_guard_page_fill(vcursor);
+		vm_map_entry_create(map, vcursor, VM_PAGE_SIZE, VM_MAP_ENTRY_GUARD_PAGE);
+	}
+
 	return vbase;
 }
 

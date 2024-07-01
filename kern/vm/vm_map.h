@@ -29,6 +29,8 @@
 
 #include <tinylibc/stdint.h>
 
+#include <libkern/list.h>
+
 #include <kern/vm/vm_types.h>
 #include <kern/vm/pmap.h>
 #include <kern/vm/vm.h>
@@ -36,10 +38,25 @@
 /* interface logger */
 #define vm_map_log(fmt, ...)		interface_log("vm_map", fmt, ##__VA_ARGS__)
 
+/* Align an address to a 4-byte boundary */
+#define VM_ALIGN_ADDR(_addr)		((_addr + (4 - 1)) & -4)
+
 #define VM_MAP_ENTRY_SIZE			(sizeof(vm_map_entry_t))
 
+#define VM_NULL						(0x0)
+#define VM_FALSE					(0x0)
+#define VM_TRUE						(0x1)
+
+/* Flags for allocating virtual memory */
+#define VM_ALLOC_GUARD_FIRST		(0x01)	/* guard page before allocation */
+#define VM_ALLOC_GUARD_LAST			(0x02)	/* guard page after allocation */
+
+#define VM_MAP_ENTRY_GUARD_PAGE		(0x01)
+
 /**
- * 
+ * Describes a virtual memory mapping entry. These correspond with physical
+ * translation table mappings, and are used to track what virtual memory space
+ * has been allocated for a particular vm_map_t.
 */
 typedef struct vm_map_entry {
 
@@ -48,11 +65,16 @@ typedef struct vm_map_entry {
 	vm_size_t		size;
 
 	/* Flags */
-	unsigned int	__unused_bits:32;
+	uint32_t		guard_page	:1,
+					__unused_bits:31;
+
+	/* List of entries */
+	list_node_t		siblings;
+
 } vm_map_entry_t;
 
 /**
- * 
+ * Virtual memory map for a task.
 */
 typedef struct vm_map {
 	uint64_t		timestamp;
@@ -72,19 +94,21 @@ typedef struct vm_map {
 					__unused_bits:31;
 
 	uint32_t		nentries;
-
-//	vm_map_entry_t	*entries;
+	list_t			entries;
 } vm_map_t;
 
 /* virtual memory maps */
-extern void vm_map_create 	(vm_map_t *map, pmap_t *pmap, vm_address_t min, vm_address_t max);
+extern void vm_map_create 	(vm_map_t *map, pmap_t *pmap, vm_address_t min,
+								vm_address_t max);
 extern void vm_map_unlock 	(vm_map_t *map);
 extern void vm_map_lock 	(vm_map_t *map);
 
-extern vm_address_t vm_map_alloc	(vm_map_t *map, vm_size_t size);
+extern vm_address_t vm_map_alloc (vm_map_t *map, vm_size_t size,
+								vm_flags_t flags);
 
 /* virtual memory map entries */
-extern void vm_map_entry_create (vm_map_t *map, vm_address_t base, vm_size_t size);
+extern void vm_map_entry_create (vm_map_t *map, vm_address_t base,
+								vm_size_t size, vm_flags_t flags);
 
 vm_map_t *vm_map_create_new (pmap_t *pmap, vm_address_t min, vm_address_t max);
 

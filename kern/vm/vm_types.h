@@ -33,6 +33,8 @@ typedef uint64_t	vm_address_t;		/* Virtual memory address */
 typedef uint64_t	vm_offset_t;		/* Virtual memory offset */
 typedef uint64_t	vm_size_t;			/* Virtual memory size */
 
+typedef uint32_t	vm_flags_t;			/* Flags */
+
 typedef int			vm_map_type_t;		/* Mapping region type */
 typedef int			vm_prot_t;			/* Mapping protection */
 

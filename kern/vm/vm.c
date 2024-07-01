@@ -26,8 +26,9 @@
 #include <kern/vm/vm.h>
 #include <kern/task.h>
 
-#include <libkern/boot.h>
 #include <libkern/assert.h>
+#include <libkern/boot.h>
+#include <libkern/list.h>
 
 #include <arch/proc_reg.h>
 
@@ -63,10 +64,16 @@ void __vm_debug_dump_map (vm_map_t *map)
 	kprintf("       flags: lock: %d\n", map->lock);
 	kprintf("     entries: %d\n", map->nentries);
 
-	for (int i = 0; i < map->nentries; i++) {
-		vm_map_entry_t *entry = (vm_map_entry_t *) (map + sizeof(vm_map_t) + (VM_MAP_ENTRY_SIZE * i));
-		kprintf("  [%d]: 0x%lx -> 0x%lx (%d bytes)\n",
-			i, entry->base, entry->base + entry->size, entry->size);
+	vm_map_entry_t *entry;
+	int idx = 0;
+	list_for_each_entry(entry, &map->entries, siblings) {
+		kprintf("  [%d]: 0x%lx -> 0x%lx (%d bytes)",
+			idx, entry->base, entry->base + entry->size, entry->size);
+		if (entry->guard_page)
+			kprintf("\t- GUARD_PAGE");
+
+		kprintf("\n");
+		idx+=1;
 	}
 	kprintf ("\n");
 }
@@ -84,7 +91,7 @@ kern_return_t vm_is_address_valid(vm_address_t addr)
 	 * valid, otherwise it's not.
 	*/
 	return (mmu_translate_kvtop(addr)) ? 
-		KERN_RETURN_SUCCESS : PMAP_RETURN_FAILED;
+		KERN_RETURN_SUCCESS : KERN_RETURN_FAIL;
 }
 
 /*******************************************************************************
@@ -106,14 +113,7 @@ void vm_configure (void)
 	 * (hopefully) within a single 4KB page.
 	*/
 	vm_map_create(kernel_vm_map, &kernel_pmap, kernel_virt_base, VM_KERNEL_MIN_ADDRESS);
-	vm_map_entry_create(kernel_vm_map, kernel_virt_base, kernel_phys_size);
-
-	/**
-	 * TODO:	The second map entry created on the kernel_vm_map gives some
-	 * 			bullshit virtual address, and i'm not sure why. For now, allocate
-	 * 			this dummy entry, and then use the third for the kernel task.
-	*/
-	vm_map_alloc (kernel_vm_map, 0);
+	vm_map_entry_create(kernel_vm_map, kernel_virt_base, kernel_phys_size, VM_NULL);
 
 }
 
@@ -165,8 +165,8 @@ void arm_vm_init (struct boot_args *args, phys_addr_t membase, phys_size_t memsi
 	console_virt_base = DEFAULTS_KERNEL_VM_PERIPH_BASE;
 
 	/* directly create the translation table entries */
-	pmap_tt_create_tte (kernel_tte, kernel_phys_base, kernel_virt_base, kernel_phys_size);
-	pmap_tt_create_tte (kernel_tte, args->uartbase, console_virt_base, args->uartsize);
+	pmap_tt_create_tte (kernel_tte, kernel_phys_base, kernel_virt_base, kernel_phys_size, PMAP_ACCESS_READWRITE);
+	pmap_tt_create_tte (kernel_tte, args->uartbase, console_virt_base, args->uartsize, PMAP_ACCESS_READWRITE);
 
 	/* switch the mmu to use the new translation tables */
 	mmu_set_tt_base_alt (kernel_ttep & TTBR_BADDR_MASK);
